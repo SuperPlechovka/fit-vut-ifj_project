@@ -1,0 +1,26 @@
+name: Pracovní úkol
+description: Konkrétní práce pro tým
+title: '[Task]: '
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Co a proč udělat
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Co je součástí úkolu
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Hotovo, když — a jak to ověřit
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Na co úkol navazuje

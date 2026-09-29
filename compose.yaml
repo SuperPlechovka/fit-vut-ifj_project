@@ -1,0 +1,12 @@
+# AI prompt: tady jsou materiály k projektu z IFJ. chci aby jsi použil šablonu a upravil ji tak, aby byla ready na tento projekt. nechci v ní nic zbytečně navíc
+services:
+  dev:
+    build: .
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    environment:
+      HOME: /tmp
+    stdin_open: true
+    tty: true

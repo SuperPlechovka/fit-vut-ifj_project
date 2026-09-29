@@ -1,0 +1,92 @@
+# AI prompt: tady jsou materiály k projektu z IFJ. chci aby jsi použil šablonu a upravil ji tak, aby byla ready na tento projekt. nechci v ní nic zbytečně navíc
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.before != '0000000000000000000000000000000000000000')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TEAM_SIZE: ${{ vars.IFJ_TEAM_SIZE || '4' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate prepared version and prevent replacing a release
+        id: version
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          import re
+          v = Path('VERSION').read_text().strip()
+          if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', v) or v == '0.0.0':
+              raise SystemExit('Nejdřív Prepare release a merge jeho PR.')
+          if f'## [{v}] - ' not in Path('CHANGELOG.md').read_text():
+              raise SystemExit('Chybí sekce changelogu.')
+          if not Path(f'.github/release-notes/v{v}.md').is_file():
+              raise SystemExit('Chybí připravené poznámky.')
+          print('number=' + v)
+          PY
+          version=$(cat VERSION)
+          tag="v$version"
+          if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA" || exit 1
+          fi
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.tag_name == \"$tag\") | .draft" > "$RUNNER_TEMP/release-status"
+          if grep -qx false "$RUNNER_TEMP/release-status"; then
+            echo 'Vydání už je zveřejněné. Neopakuj publish; připrav novou verzi.'
+            exit 1
+          fi
+      - name: Build, check, unit tests, compiler cases, API and submission ZIP
+        run: |
+          docker build -t ifj26-dev:release .
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e TEAM_SIZE \
+            -v "$PWD:/workspace" ifj26-dev:release \
+            bash -euc 'make; make check; make unit; make compile-tests; make docs; make pack'
+          sha256sum dist/ifj26.zip | sed 's|dist/||' > dist/SHA256SUMS
+          echo 'Release: testy návratových kódů, bez školního interpretu. Plné systémové testy musí tým ověřit před merge.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v5
+        if: vars.PAGES_ENABLED == 'true'
+        with:
+          path: build/docs/html
+      - name: Publish exact commit
+        env:
+          VERSION: ${{ steps.version.outputs.number }}
+        run: |
+          tag="v$VERSION"
+          if ! git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "$tag"
+          fi
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --draft --title "IFJ26 $tag" \
+              --notes-file ".github/release-notes/$tag.md"
+          fi
+          gh release upload "$tag" dist/ifj26.zip dist/SHA256SUMS --clobber
+          gh release edit "$tag" --draft=false
+  documentation:
+    needs: publish
+    if: vars.PAGES_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: pages

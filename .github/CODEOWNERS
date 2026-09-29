@@ -1,0 +1,23 @@
+# Vlastníci jednotlivých částí projektu.
+# Používej GitHub účty, ne školní loginy.
+# Všichni uvedení musí mít právo Write do repozitáře.
+
+# Vedoucí týmu — výchozí vlastník všech souborů.
+* @SuperPlechovka
+
+# Další členové — nahraď účty a odkomentuj podle rozdělení práce.
+# /src/    @SuperPlechovka @GITHUB_LOGIN_2
+# /tests/  @SuperPlechovka @GITHUB_LOGIN_3
+# /docs/   @SuperPlechovka @GITHUB_LOGIN_4
+
+# Správa repozitáře a vývojového prostředí.
+/.github/       @SuperPlechovka
+/tools/         @SuperPlechovka
+/Makefile       @SuperPlechovka
+/Dockerfile     @SuperPlechovka
+/compose.yaml   @SuperPlechovka
+/Doxyfile       @SuperPlechovka
+/.clang-format  @SuperPlechovka
+/.editorconfig  @SuperPlechovka
+/.gitattributes @SuperPlechovka
+/.gitignore     @SuperPlechovka

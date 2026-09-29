@@ -1,0 +1,81 @@
+# AI prompt: tady jsou materiály k projektu z IFJ. chci aby jsi použil šablonu a upravil ji tak, aby byla ready na tento projekt. nechci v ní nic zbytečně navíc
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    outputs:
+      implemented: ${{ steps.state.outputs.implemented }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test development infrastructure
+        run: make infra-test
+      - name: Detect implementation
+        id: state
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          print('implemented=' + str(any(Path('src').glob('*.c'))).lower())
+          PY
+      - name: Explain initial scaffold
+        if: steps.state.outputs.implemented != 'true'
+        run: echo 'Kostra bez implementace. Build ani testy překladače neproběhly.' >> "$GITHUB_STEP_SUMMARY"
+  pr-description:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - run: python3 tools/check_pr.py
+  build-and-test:
+    needs: configuration
+    if: needs.configuration.outputs.implemented == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: docker build -t ifj26-dev:ci .
+      - name: Build, style, static analysis, unit tests and compiler cases
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$PWD:/workspace" ifj26-dev:ci \
+            bash -euc 'make; make check; make unit; make compile-tests; make docs'
+      - name: State coverage limit
+        if: always()
+        run: echo 'CI kontroluje překlad, unit testy a návratové kódy překladače. Spuštění IFJcode26 zde NEPROBĚHLO; před merge a odevzdáním spusťte make test s ic26int.' >> "$GITHUB_STEP_SUMMARY"
+  ci-result:
+    if: always()
+    needs: [configuration, pr-description, build-and-test]
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          jobs = json.loads(os.environ['RESULTS'])
+          if jobs['configuration']['result'] != 'success':
+              raise SystemExit('Kontrola infrastruktury selhala.')
+          if any(job['result'] in ('failure', 'cancelled') for job in jobs.values()):
+              raise SystemExit('CI selhalo nebo bylo zrušené.')
+          if jobs['configuration']['outputs'].get('implemented') == 'true':
+              if jobs['build-and-test']['result'] != 'success':
+                  raise SystemExit('Implementace musí projít buildem a testy.')
+          print('Kontroly dokončeny; rozsah viz summary workflow.')
+          PY

@@ -1,0 +1,14 @@
+changelog:
+  exclude:
+    labels: [skip-changelog]
+  categories:
+    - title: Nové funkce
+      labels: [enhancement, feature]
+    - title: Opravy
+      labels: [bug, fix]
+    - title: Dokumentace
+      labels: [documentation]
+    - title: Závislosti
+      labels: [dependencies]
+    - title: Ostatní změny
+      labels: ['*']

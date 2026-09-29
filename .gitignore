@@ -1,0 +1,16 @@
+/build/
+/dist/
+/ifj26
+/tools/local/*
+!/tools/local/.gitkeep
+**/__pycache__/
+*.pyc
+*.o
+*.d
+*.a
+*.so
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store

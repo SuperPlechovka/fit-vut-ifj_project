@@ -1,0 +1,79 @@
+# AI prompt: tady jsou materiály k projektu z IFJ. chci aby jsi použil šablonu a upravil ji tak, aby byla ready na tento projekt. nechci v ní nic zbytečně navíc
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Stable version without v, e.g. 1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  # Wait for the preceding release and its deployments to finish.
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION_INPUT: ${{ inputs.version }}
+      TEAM_SIZE: ${{ vars.IFJ_TEAM_SIZE || '4' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate requested version and project
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import pack
+          pack.inputs(Path.cwd(), int(os.environ.get('TEAM_SIZE', '4')))
+          v = os.environ['VERSION_INPUT']
+          if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', v):
+              raise SystemExit('Use MAJOR.MINOR.PATCH, without v')
+          PY
+      - name: Generate release notes and update cumulative changelog
+        run: |
+          python3 tools/generate_release_notes.py "$VERSION_INPUT" --output "$RUNNER_TEMP/notes.json"
+          python3 tools/prepare_release.py "$VERSION_INPUT" --generated-json "$RUNNER_TEMP/notes.json"
+      - name: Create release pull request
+        run: |
+          branch="release/v$VERSION_INPUT"
+          git switch -c "$branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add VERSION CHANGELOG.md ".github/release-notes/v$VERSION_INPUT.md"
+          git commit -m "chore: prepare v$VERSION_INPUT"
+          git push origin "$branch"
+          cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
+          ## Proč
+          Připravit nové vydání ze zkontrolovaného commitu.
+          ## Změny
+          Aktualizace VERSION, kumulativního CHANGELOG a poznámek k vydání.
+          ## Ověření
+          CI je explicitně spuštěno na release větvi; výsledky zkontroluj před sloučením.
+          ## Dokumentace
+          Poznámky k vydání jsou součástí tohoto PR; API dokumentace vznikne při vydání.
+          ## Související issue
+          Bez samostatného issue: pravidelná příprava vydání.
+          - [x] Starší záznamy CHANGELOG zůstávají zachované.
+          BODY
+          gh label create skip-changelog --color cfd3d7 \
+            --description 'Exclude this PR from generated release notes' --force
+          gh pr create --base main --head "$branch" --title "Release v$VERSION_INPUT" \
+            --label skip-changelog --body-file "$RUNNER_TEMP/release-pr.md"
+          # GITHUB_TOKEN push/PR events do not normally trigger another workflow.
+          gh workflow run ci.yml --ref "$branch"

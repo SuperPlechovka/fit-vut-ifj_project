@@ -1,0 +1,43 @@
+name: Funkce nebo rozšíření
+description: Funkce překladače nebo rozšíření podle zadání
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Co a pro koho chceme zlepšit
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Jak to má fungovat
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Další možnosti
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Oblast změny
+      options:
+        - Funkce aplikace
+        - Dokumentace
+        - Build a automatizace
+        - Výkon
+        - Jiné
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Hotovo, když
+      description: Krátký checklist. Podle čeho poznáme, že funkce funguje?
+      placeholder: |
+        - [ ] Uživatel dokáže…
+        - [ ] Chybový vstup způsobí…
+    validations:
+      required: true

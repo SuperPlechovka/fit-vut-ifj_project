@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+# Testovací vstupy a očekávané výstupy musí zachovat přesné bajty.
+/tests/system/** -text
+rozdeleni text eol=lf
