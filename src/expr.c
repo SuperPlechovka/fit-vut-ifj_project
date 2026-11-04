@@ -117,7 +117,7 @@ static PrecSym next_sym(void)
   return s;
 }
 
-/* Uvolní všechno rozpracované a vrátí kód syntaktické chyby. */
+/**Uvolní všechno rozpracované a vrátí kód syntaktické chyby. */
 static int fail(Node **out)
 {
   clear_stack();
@@ -127,7 +127,7 @@ static int fail(Node **out)
   return 2;
 }
 
-/* Zredukuje pivot nad nejvyšší značkou. Vrací 1 (úspěch) nebo 0 (chyba). */
+/** Zredukuje pivot nad nejvyšší značkou. Vrací 1 (úspěch) nebo 0 (chyba). */
 static int reduce(void)
 {
   int h = sp - 1;
