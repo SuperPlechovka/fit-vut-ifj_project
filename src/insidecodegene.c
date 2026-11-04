@@ -167,11 +167,11 @@ static Operand genCall(Gen *g, Node *n)
 
   emit(&g->body, I_CALL, opLabel(n->name), opNone(), opNone());
 
-  if (n->type != TY_UNIT && n->type != TY_UNKNOWN) {
-    int idx = newTemp(g);
-    emit(&g->body, I_MOVE, tmpOp(g, idx), opVar(FR_TF, "$retval"), opNone());
-    return tmpOp(g, idx);
-  }
+if (n->type != TY_UNIT && n->type != TY_UNKNOWN) {
+  int idx = newTemp(g);
+  emit(&g->body, I_MOVE, tmpOp(g, idx), opVar(FR_GF, "$retval"), opNone());
+  return tmpOp(g, idx);
+}
   return opNone();
 }
 
@@ -219,12 +219,11 @@ static void genStmt(Gen *g, Node *n)
       emit(&g->body, I_WRITE, v, opNone(), opNone());
       break;
 
-    case N_RETURN:
+  case N_RETURN:
       if (n->left != NULL) {
         v = genExpr(g, n->left);
         v = coerce(g, v, n->left->type, n->type);
-        emit(&g->body, I_DEFVAR, opVar(FR_TF, "$retval"), opNone(), opNone());
-        emit(&g->body, I_MOVE, opVar(FR_TF, "$retval"), v, opNone());
+        emit(&g->body, I_MOVE, opVar(FR_GF, "$retval"), v, opNone());
       }
       emit(&g->body, I_POPFRAME, opNone(), opNone(), opNone());
       emit(&g->body, I_RETURN, opNone(), opNone(), opNone());
@@ -257,7 +256,7 @@ static void joinLists(ListOfInstr *out, ListOfInstr *first, ListOfInstr *second)
   out->last = second->last;
 }
 
-static void genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
+static int genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
 {
   Gen g;
   listInit(&g.decls);
@@ -267,11 +266,14 @@ static void genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
   g.err = 0;
   g.frame = f->is_main ? FR_GF : FR_LF;
 
+  ListOfInstr head;
+  listInit(&head);
+
   if (f->is_main) {
-    emit(&g.body, I_LABEL, opLabel("main"), opNone(), opNone());
+    emit(&head, I_LABEL, opLabel("main"), opNone(), opNone());
   } else {
-    emit(&g.body, I_LABEL, opLabel(f->name), opNone(), opNone());
-    emit(&g.body, I_PUSHFRAME, opNone(), opNone(), opNone());
+    emit(&head, I_LABEL, opLabel(f->name), opNone(), opNone());
+    emit(&head, I_PUSHFRAME, opNone(), opNone(), opNone());
   }
 
   genList(&g, f->body);
@@ -282,7 +284,13 @@ static void genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
   }
 
   *lbl_seq = g.lbl_seq;
-  joinLists(out, &g.decls, &g.body);
+
+  ListOfInstr tmp;
+  listInit(&tmp);
+  joinLists(&tmp, &head, &g.decls);
+  joinLists(out, &tmp, &g.body);
+
+  return g.err;
 }
 
 int codegenProgram(Node *prog, ListOfInstr *out)
@@ -293,7 +301,10 @@ int codegenProgram(Node *prog, ListOfInstr *out)
 
   ListOfInstr header;
   listInit(&header);
-  /* Úvodní skok na main bez neexistující instrukce I_HEADER */
+
+  /* Globální deklarace pro návratové hodnoty funkcí */
+  emit(&header, I_DEFVAR, opVar(FR_GF, "$retval"), opNone(), opNone());
+  /* Úvodní skok na hlavní funkci */
   emit(&header, I_JUMP, opLabel("main"), opNone(), opNone());
 
   ListOfInstr funcs_code;
@@ -304,6 +315,8 @@ int codegenProgram(Node *prog, ListOfInstr *out)
 
   for (Node *f = prog->body; f != NULL; f = f->next) {
     if (f->kind != N_FUNC) {
+      listFree(&header);
+      listFree(&funcs_code);
       return 99;
     }
 
@@ -313,7 +326,14 @@ int codegenProgram(Node *prog, ListOfInstr *out)
 
     ListOfInstr f_code;
     listInit(&f_code);
-    genFunc(f, &f_code, &lbl_seq);
+
+    int err = genFunc(f, &f_code, &lbl_seq);
+    if (err != 0) {
+      listFree(&header);
+      listFree(&funcs_code);
+      listFree(&f_code);
+      return err;
+    }
 
     ListOfInstr merged;
     listInit(&merged);
@@ -322,6 +342,8 @@ int codegenProgram(Node *prog, ListOfInstr *out)
   }
 
   if (!main_found) {
+    listFree(&header);
+    listFree(&funcs_code);
     return 99;
   }
 
