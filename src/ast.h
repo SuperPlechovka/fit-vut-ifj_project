@@ -113,5 +113,6 @@ Node *nodeReturn(Node *expr);
 Node *nodeFunc(const char *name, int is_main, TypeKind ret, Node *body);
 Node *nodeProgram(Node *funcs);
 void nodeSetPos(Node *n, int line, int col);
+void nodeAppend(Node **list, Node *node);
 
 #endif

@@ -210,3 +210,20 @@ void nodeSetPos(Node *n, int line, int col)
     n->col = col;
   }
 }
+void nodeAppend(Node **list, Node *node)
+{
+  if (list == NULL || node == NULL) {
+    return;
+  }
+
+  if (*list == NULL) {
+    *list = node;
+    return;
+  }
+
+  Node *current = *list;
+  while (current->next != NULL) {
+    current = current->next;
+  }
+  current->next = node;
+}
