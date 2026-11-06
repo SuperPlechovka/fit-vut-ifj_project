@@ -63,4 +63,6 @@ Operand opNil(void);
 void emit(ListOfInstr *L, InstrType t, Operand a1, Operand a2, Operand a3);
 void listPrint(const ListOfInstr *L, FILE *out);
 
+Operand opDup(Operand o);
+void joinLists(ListOfInstr *dest, ListOfInstr *L1, ListOfInstr *L2);
 #endif

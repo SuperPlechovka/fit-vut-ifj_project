@@ -14,6 +14,9 @@ typedef struct {
   Frame frame; 
 } Gen;
 
+
+static void genIf(Gen *g, Node *n);
+static void genWhile(Gen *g, Node *n);
 static void fail(Gen *g, const char *what)
 {
   if (!g->err)
@@ -50,7 +53,10 @@ static Operand newLabel(Gen *g, const char *prefix)
 {
   char buf[64];
   snprintf(buf, sizeof buf, "%s$%d", prefix, g->lbl_seq++);
-  return opLabel(buf);
+  
+
+  char *label_str = strdup(buf);
+  return opLabel(label_str);
 }
 
 static Operand coerce(Gen *g, Operand v, TypeKind from, TypeKind to)
@@ -73,8 +79,18 @@ static Operand genBinary(Gen *g, Node *n)
   Operand r = genExpr(g, n->right);
   int idx;
 
-  l = coerce(g, l, n->left->type, n->type);
-  r = coerce(g, r, n->right->type, n->type);
+  /* Určení společného typu operandů */
+  TypeKind target_type = n->type;
+  if (n->op >= OP_LT && n->op <= OP_NE) {
+    if (n->left->type == TY_DOUBLE || n->right->type == TY_DOUBLE) {
+      target_type = TY_DOUBLE;
+    } else {
+      target_type = n->left->type;
+    }
+  }
+
+  l = coerce(g, l, n->left->type, target_type);
+  r = coerce(g, r, n->right->type, target_type);
 
   switch (n->op) {
     case OP_ADD:
@@ -91,7 +107,7 @@ static Operand genBinary(Gen *g, Node *n)
       return tmpOp(g, idx);
     case OP_DIV:
       idx = newTemp(g);
-      emit(&g->body, (n->type == TY_DOUBLE) ? I_DIV : I_IDIV, tmpOp(g, idx), l, r);
+      emit(&g->body, (target_type == TY_DOUBLE) ? I_DIV : I_IDIV, tmpOp(g, idx), l, r);
       return tmpOp(g, idx);
     case OP_LT:
       idx = newTemp(g);
@@ -228,6 +244,12 @@ static void genStmt(Gen *g, Node *n)
       emit(&g->body, I_POPFRAME, opNone(), opNone(), opNone());
       emit(&g->body, I_RETURN, opNone(), opNone(), opNone());
       break;
+  case N_IF:
+    genIf(g, n);
+    break;
+  case N_WHILE:
+  genWhile(g, n);
+  break;
 
     default:
       fail(g, "Příkaz tohoto druhu není podporován");
@@ -241,20 +263,7 @@ static void genList(Gen *g, Node *stmt)
     genStmt(g, stmt);
 }
 
-static void joinLists(ListOfInstr *out, ListOfInstr *first, ListOfInstr *second)
-{
-  if (first->first == NULL) {
-    *out = *second;
-    return;
-  }
-  if (second->first == NULL) {
-    *out = *first;
-    return;
-  }
-  first->last->next = second->first;
-  out->first = first->first;
-  out->last = second->last;
-}
+
 
 static int genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
 {
@@ -271,6 +280,8 @@ static int genFunc(Node *f, ListOfInstr *out, int *lbl_seq)
 
   if (f->is_main) {
     emit(&head, I_LABEL, opLabel("main"), opNone(), opNone());
+
+    
   } else {
     emit(&head, I_LABEL, opLabel(f->name), opNone(), opNone());
     emit(&head, I_PUSHFRAME, opNone(), opNone(), opNone());
@@ -322,6 +333,7 @@ int codegenProgram(Node *prog, ListOfInstr *out)
 
     if (f->is_main) {
       main_found = 1;
+  
     }
 
     ListOfInstr f_code;
@@ -349,4 +361,43 @@ int codegenProgram(Node *prog, ListOfInstr *out)
 
   joinLists(out, &header, &funcs_code);
   return 0;
+}
+
+static void genIf(Gen *g, Node *n)
+{
+  Operand cond = genExpr(g, n->left);
+
+  Operand lbl_else = newLabel(g, "if_else");
+  Operand lbl_end  = newLabel(g, "if_end");
+
+  Operand target_else = (n->right != NULL) ? lbl_else : lbl_end;
+
+  emit(&g->body, I_JUMPIFEQ, opDup(target_else), cond, opBool(0));
+
+  genList(g, n->body);
+
+  if (n->right != NULL) {
+    emit(&g->body, I_JUMP, opDup(lbl_end), opNone(), opNone());
+    emit(&g->body, I_LABEL, lbl_else, opNone(), opNone());
+    genList(g, n->right);
+  }
+
+  emit(&g->body, I_LABEL, lbl_end, opNone(), opNone());
+}
+
+static void genWhile(Gen *g, Node *n)
+{
+  Operand lbl_cond = newLabel(g, "while_cond");
+  Operand lbl_end  = newLabel(g, "while_end");
+
+  emit(&g->body, I_LABEL, opDup(lbl_cond), opNone(), opNone());
+
+  Operand cond = genExpr(g, n->left);
+
+  emit(&g->body, I_JUMPIFEQ, opDup(lbl_end), cond, opBool(0));
+
+  genList(g, n->body);
+
+  emit(&g->body, I_JUMP, lbl_cond, opNone(), opNone());
+  emit(&g->body, I_LABEL, lbl_end, opNone(), opNone());
 }

@@ -128,9 +128,10 @@ void emit(ListOfInstr *L, InstrType t, Operand a1, Operand a2, Operand a3)
 {
   Instr I;
   I.type = t;
-  I.a1 = a1;
-  I.a2 = a2;
-  I.a3 = a3;
+
+  I.a1 = opDup(a1);
+  I.a2 = opDup(a2);
+  I.a3 = opDup(a3);
   listInsertLast(L, I);
 }
 
@@ -192,4 +193,27 @@ void listPrint(const ListOfInstr *L, FILE *out)
     }
     fputc('\n', out);
   }
+}
+Operand opDup(Operand o)
+{
+  if (o.name != NULL) {
+    o.name = xstrdup(o.name);
+  }
+  return o;
+}
+void joinLists(ListOfInstr *dest, ListOfInstr *L1, ListOfInstr *L2)
+{
+  listInit(dest);
+  if (L1->first == NULL) {
+    *dest = *L2;
+  } else if (L2->first == NULL) {
+    *dest = *L1;
+  } else {
+    dest->first = L1->first;
+    L1->last->next = L2->first;
+    dest->last = L2->last;
+  }
+  /* Vynulování původních seznamů pro zamezení double-free */
+  L1->first = L1->last = NULL;
+  L2->first = L2->last = NULL;
 }
