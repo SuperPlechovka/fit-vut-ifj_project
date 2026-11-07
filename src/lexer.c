@@ -361,7 +361,6 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 const int append_result = append_lexem(lexer, escaped_character);
                 if (!append_result)
                     state = SCAN_ERROR;
-                state = SCAN_STRING;
             } else {
                 state = SCAN_ERROR;
             }
