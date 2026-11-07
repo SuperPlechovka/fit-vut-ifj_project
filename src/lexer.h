@@ -10,11 +10,7 @@
 
 #include "token.h"
 
-typedef enum lexer_result {
-    LEXER_OK = 0,
-    LEXER_ERROR = 1,
-    LEXER_INTERNAL_ERROR = 99
-} LexerResult;
+typedef enum lexer_result { LEXER_OK = 0, LEXER_ERROR = 1, LEXER_INTERNAL_ERROR = 99 } LexerResult;
 
 typedef struct lexer {
     FILE *input;

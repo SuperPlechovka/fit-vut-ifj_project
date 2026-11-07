@@ -14,7 +14,9 @@ static int unread_char(Lexer *lexer, int character);
 static int append_lexem(Lexer *lexer, char character);
 static void reset_lexem(Lexer *lexer);
 static TokenType keyword_type(const char *text, size_t length);
-static int set_token(Token *token, TokenType type, TokenData data, const char *text, size_t text_length, size_t line, size_t column, size_t end_line, size_t end_column);
+static int set_token(Token *token, TokenType type, TokenData data, const char *text,
+                     size_t text_length, size_t line, size_t column, size_t end_line,
+                     size_t end_column);
 static int is_letter(int character);
 static int is_digit(int character);
 static int is_identifier_character(int character);
@@ -78,7 +80,8 @@ LexerResult next_token(Lexer *lexer, Token *token) {
     }
     token_init(token);
     if (lexer->eof_emitted) {
-        const int eof_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line, lexer->column, lexer->line, lexer->column);
+        const int eof_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column, lexer->line, lexer->column);
         if (!eof_result) {
             return LEXER_INTERNAL_ERROR;
         }
@@ -109,21 +112,25 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             if (character == EOF) {
                 if (lexer->indent_depth > 1) {
                     lexer->indent_depth--;
-                    set_token_ok = set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, lexer->column, lexer->line, lexer->column);
+                    set_token_ok =
+                        set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line,
+                                  lexer->column, lexer->line, lexer->column);
                     if (!set_token_ok) {
                         return LEXER_INTERNAL_ERROR;
                     }
                     lexer->at_line_start = 1;
                     return LEXER_OK;
                 }
-                set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line, lexer->column, lexer->line, lexer->column);
+                set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line, lexer->column,
+                          lexer->line, lexer->column);
                 lexer->eof_emitted = 1;
                 state = SCAN_DONE;
             } else if (character == ' ' || character == '\t' || character == '\r') {
                 continue;
             } else if (character == '\n') {
                 lexer->at_line_start = 1;
-                set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0, lexer->line - 1, 1, lexer->line, 1);
+                set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0, lexer->line - 1, 1,
+                          lexer->line, 1);
                 state = SCAN_DONE;
             } else if (is_letter(character) || character == '_') {
                 token_line = lexer->line;
@@ -146,12 +153,14 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                     return read_line_comment(lexer, token);
                 }
                 unread_char(lexer, next_character);
-                set_token_ok = set_token(token, TOK_SLASH, (TokenData){0}, NULL, 0, lexer->line, lexer->column - 1, lexer->line, lexer->column);
+                set_token_ok = set_token(token, TOK_SLASH, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column - 1, lexer->line, lexer->column);
                 if (!set_token_ok) {
                     return LEXER_INTERNAL_ERROR;
                 }
                 return LEXER_OK;
-            } else if (character == '=' || character == '!' || character == '<' || character == '>') {
+            } else if (character == '=' || character == '!' || character == '<' ||
+                       character == '>') {
                 operator_first = character;
                 token_line = lexer->line;
                 token_column = lexer->column - 1;
@@ -159,57 +168,88 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             } else {
                 TokenType type;
                 switch (character) {
-                    case '+': type = TOK_PLUS; break;
-                    case '-': type = TOK_MINUS; break;
-                    case '*': type = TOK_STAR; break;
-                    case '/': type = TOK_SLASH; break;
-                    case '(': type = TOK_LPAREN; break;
-                    case ')': type = TOK_RPAREN; break;
-                    case ',': type = TOK_COMMA; break;
-                    case ':': type = TOK_COLON; break;
-                    case ';': type = TOK_SEMICOLON; break;
-                    case '.': type = TOK_DOT; break;
-                    case '@': type = TOK_AT; break;
-                    default: state = SCAN_ERROR; continue;
+                case '+':
+                    type = TOK_PLUS;
+                    break;
+                case '-':
+                    type = TOK_MINUS;
+                    break;
+                case '*':
+                    type = TOK_STAR;
+                    break;
+                case '/':
+                    type = TOK_SLASH;
+                    break;
+                case '(':
+                    type = TOK_LPAREN;
+                    break;
+                case ')':
+                    type = TOK_RPAREN;
+                    break;
+                case ',':
+                    type = TOK_COMMA;
+                    break;
+                case ':':
+                    type = TOK_COLON;
+                    break;
+                case ';':
+                    type = TOK_SEMICOLON;
+                    break;
+                case '.':
+                    type = TOK_DOT;
+                    break;
+                case '@':
+                    type = TOK_AT;
+                    break;
+                default:
+                    state = SCAN_ERROR;
+                    continue;
                 }
-                set_token_ok = set_token(token, type, (TokenData){0}, NULL, 0, lexer->line, lexer->column - 1, lexer->line, lexer->column);
-                if (!set_token_ok) return LEXER_INTERNAL_ERROR;
+                set_token_ok = set_token(token, type, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column - 1, lexer->line, lexer->column);
+                if (!set_token_ok)
+                    return LEXER_INTERNAL_ERROR;
                 state = SCAN_DONE;
             }
             break;
 
-        case SCAN_LINE_START:
-            {
-                const LexerResult indentation_result = handle_line_start(lexer, token, character);
-                if (indentation_result != LEXER_OK) {
-                    return indentation_result;
-                }
-                if (token->type == TOK_INDENT || token->type == TOK_DEDENT) {
-                    state = SCAN_DONE;
-                } else {
-                    state = SCAN_START;
-                }
+        case SCAN_LINE_START: {
+            const LexerResult indentation_result = handle_line_start(lexer, token, character);
+            if (indentation_result != LEXER_OK) {
+                return indentation_result;
             }
-            break;
+            if (token->type == TOK_INDENT || token->type == TOK_DEDENT) {
+                state = SCAN_DONE;
+            } else {
+                state = SCAN_START;
+            }
+        } break;
 
         case SCAN_OPERATOR:
             if (operator_first == '=' && character == '=') {
-                set_token(token, TOK_EQ, (TokenData){0}, NULL, 0, token_line, token_column, lexer->line, lexer->column);
-            } else if (operator_first == '=' ) {
+                set_token(token, TOK_EQ, (TokenData){0}, NULL, 0, token_line, token_column,
+                          lexer->line, lexer->column);
+            } else if (operator_first == '=') {
                 unread_char(lexer, character);
-                set_token(token, TOK_ASSIGN, (TokenData){0}, NULL, 0, token_line, token_column, token_line, token_column + 1);
+                set_token(token, TOK_ASSIGN, (TokenData){0}, NULL, 0, token_line, token_column,
+                          token_line, token_column + 1);
             } else if (operator_first == '!' && character == '=') {
-                set_token(token, TOK_NEQ, (TokenData){0}, NULL, 0, token_line, token_column, lexer->line, lexer->column);
+                set_token(token, TOK_NEQ, (TokenData){0}, NULL, 0, token_line, token_column,
+                          lexer->line, lexer->column);
             } else if (operator_first == '<' && character == '=') {
-                set_token(token, TOK_LE, (TokenData){0}, NULL, 0, token_line, token_column, lexer->line, lexer->column);
+                set_token(token, TOK_LE, (TokenData){0}, NULL, 0, token_line, token_column,
+                          lexer->line, lexer->column);
             } else if (operator_first == '>' && character == '=') {
-                set_token(token, TOK_GE, (TokenData){0}, NULL, 0, token_line, token_column, lexer->line, lexer->column);
+                set_token(token, TOK_GE, (TokenData){0}, NULL, 0, token_line, token_column,
+                          lexer->line, lexer->column);
             } else {
                 unread_char(lexer, character);
                 if (operator_first == '<') {
-                    set_token(token, TOK_LT, (TokenData){0}, NULL, 0, token_line, token_column, token_line, token_column + 1);
+                    set_token(token, TOK_LT, (TokenData){0}, NULL, 0, token_line, token_column,
+                              token_line, token_column + 1);
                 } else if (operator_first == '>') {
-                    set_token(token, TOK_GT, (TokenData){0}, NULL, 0, token_line, token_column, token_line, token_column + 1);
+                    set_token(token, TOK_GT, (TokenData){0}, NULL, 0, token_line, token_column,
+                              token_line, token_column + 1);
                 } else {
                     state = SCAN_ERROR;
                     break;
@@ -221,14 +261,19 @@ LexerResult next_token(Lexer *lexer, Token *token) {
         case SCAN_IDENTIFIER:
             if (is_identifier_character(character)) {
                 const int append_result = append_lexem(lexer, (char)character);
-                if (!append_result) state = SCAN_ERROR;
+                if (!append_result)
+                    state = SCAN_ERROR;
             } else {
                 unread_char(lexer, character);
                 const TokenType token_type = keyword_type(lexer->lexem, lexer->lexem_length);
                 if (token_type == TOK_IDENTIFIER) {
-                    set_token_ok = set_token(token, token_type, (TokenData){0}, lexer->lexem, lexer->lexem_length, token_line, token_column, token_line, token_column + lexer->lexem_length);
+                    set_token_ok = set_token(token, token_type, (TokenData){0}, lexer->lexem,
+                                             lexer->lexem_length, token_line, token_column,
+                                             token_line, token_column + lexer->lexem_length);
                 } else {
-                    set_token_ok = set_token(token, token_type, (TokenData){0}, NULL, 0, token_line, token_column, token_line, token_column + lexer->lexem_length);
+                    set_token_ok =
+                        set_token(token, token_type, (TokenData){0}, NULL, 0, token_line,
+                                  token_column, token_line, token_column + lexer->lexem_length);
                 }
                 if (!set_token_ok) {
                     state = SCAN_ERROR;
@@ -241,7 +286,8 @@ LexerResult next_token(Lexer *lexer, Token *token) {
         case SCAN_NUMBER:
             if (is_digit(character) || character == '.') {
                 const int append_result = append_lexem(lexer, (char)character);
-                if (!append_result) state = SCAN_ERROR;
+                if (!append_result)
+                    state = SCAN_ERROR;
             } else {
                 unread_char(lexer, character);
                 if (is_letter(character) || character == '_') {
@@ -250,7 +296,8 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 }
                 size_t dot_count = 0;
                 for (size_t i = 0; i < lexer->lexem_length; ++i) {
-                    if (lexer->lexem[i] == '.') dot_count++;
+                    if (lexer->lexem[i] == '.')
+                        dot_count++;
                 }
                 if (dot_count > 1) {
                     state = SCAN_ERROR;
@@ -259,11 +306,15 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 if (strchr(lexer->lexem, '.') != NULL) {
                     TokenData data = {0};
                     data.num_float_val = strtod(lexer->lexem, NULL);
-                    set_token_ok = set_token(token, TOK_DOUBLE_LITERAL, data, NULL, 0, token_line, token_column, token_line, token_column + lexer->lexem_length);
+                    set_token_ok =
+                        set_token(token, TOK_DOUBLE_LITERAL, data, NULL, 0, token_line,
+                                  token_column, token_line, token_column + lexer->lexem_length);
                 } else {
                     TokenData data = {0};
                     data.num_int_val = strtoll(lexer->lexem, NULL, 10);
-                    set_token_ok = set_token(token, TOK_INT_LITERAL, data, NULL, 0, token_line, token_column, token_line, token_column + lexer->lexem_length);
+                    set_token_ok =
+                        set_token(token, TOK_INT_LITERAL, data, NULL, 0, token_line, token_column,
+                                  token_line, token_column + lexer->lexem_length);
                 }
                 if (!set_token_ok) {
                     state = SCAN_ERROR;
@@ -275,7 +326,9 @@ LexerResult next_token(Lexer *lexer, Token *token) {
 
         case SCAN_STRING:
             if (character == '"') {
-                set_token_ok = set_token(token, TOK_STRING_LITERAL, (TokenData){0}, lexer->lexem, lexer->lexem_length, token_line, token_column, token_line, token_column + lexer->lexem_length);
+                set_token_ok = set_token(token, TOK_STRING_LITERAL, (TokenData){0}, lexer->lexem,
+                                         lexer->lexem_length, token_line, token_column, token_line,
+                                         token_column + lexer->lexem_length);
                 if (!set_token_ok) {
                     state = SCAN_ERROR;
                     break;
@@ -296,13 +349,18 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             break;
 
         case SCAN_ESCAPE:
-            if (character == 'n' || character == 'r' || character == 't' || character == '"' || character == '\\') {
+            if (character == 'n' || character == 'r' || character == 't' || character == '"' ||
+                character == '\\') {
                 char escaped_character = (char)character;
-                if (character == 'n') escaped_character = '\n';
-                if (character == 'r') escaped_character = '\r';
-                if (character == 't') escaped_character = '\t';
+                if (character == 'n')
+                    escaped_character = '\n';
+                if (character == 'r')
+                    escaped_character = '\r';
+                if (character == 't')
+                    escaped_character = '\t';
                 const int append_result = append_lexem(lexer, escaped_character);
-                if (!append_result) state = SCAN_ERROR;
+                if (!append_result)
+                    state = SCAN_ERROR;
                 state = SCAN_STRING;
             } else {
                 state = SCAN_ERROR;
@@ -322,14 +380,11 @@ LexerResult next_token(Lexer *lexer, Token *token) {
     return LEXER_OK;
 }
 
-
 static int is_letter(const int character) {
     return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z');
 }
 
-static int is_digit(const int character) {
-    return character >= '0' && character <= '9';
-}
+static int is_digit(const int character) { return character >= '0' && character <= '9'; }
 
 static int is_identifier_character(const int character) {
     return is_letter(character) || is_digit(character) || character == '_';
@@ -387,7 +442,8 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
         }
         lexer->indents[lexer->indent_depth] = indent;
         lexer->indent_depth++;
-        const int set_result = set_token(token, TOK_INDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, indent + 1);
+        const int set_result = set_token(token, TOK_INDENT, (TokenData){0}, NULL, 0, lexer->line, 1,
+                                         lexer->line, indent + 1);
         if (!set_result) {
             return LEXER_INTERNAL_ERROR;
         }
@@ -404,7 +460,8 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
     if (lexer->pending_dedents > 0) {
         lexer->pending_dedents--;
         lexer->at_line_start = 1;
-        const int set_result = set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, 1);
+        const int set_result =
+            set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, 1);
         if (!set_result) {
             return LEXER_INTERNAL_ERROR;
         }
@@ -427,8 +484,8 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
         }
         return LEXER_OK;
     }
-    const int set_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0,
-                                     lexer->line, lexer->column, lexer->line, lexer->column);
+    const int set_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line,
+                                     lexer->column, lexer->line, lexer->column);
     if (!set_result) {
         return LEXER_INTERNAL_ERROR;
     }
@@ -440,7 +497,8 @@ static int unread_char(Lexer *lexer, const int character) {
     if (lexer == NULL || character == EOF) {
         return 0;
     }
-    if (ungetc(character, lexer->input) == EOF) return 0;
+    if (ungetc(character, lexer->input) == EOF)
+        return 0;
     if (character == '\n') {
         if (lexer->line > 1) {
             lexer->line--;
@@ -484,10 +542,12 @@ static TokenType keyword_type(const char *text, const size_t length) {
         const char *text;
         TokenType type;
     } keywords[] = {
-        {.text = "import", .type = TOK_KW_IMPORT}, {.text = "def", .type = TOK_KW_DEF},       {.text = "val", .type = TOK_KW_VAL},
-        {.text = "var", .type = TOK_KW_VAR},       {.text = "if", .type = TOK_KW_IF},         {.text = "then", .type = TOK_KW_THEN},
-        {.text = "else", .type = TOK_KW_ELSE},     {.text = "while", .type = TOK_KW_WHILE},   {.text = "do", .type = TOK_KW_DO},
-        {.text = "return", .type = TOK_KW_RETURN}, {.text = "Int", .type = TOK_KW_INT},       {.text = "Double", .type = TOK_KW_DOUBLE},
+        {.text = "import", .type = TOK_KW_IMPORT}, {.text = "def", .type = TOK_KW_DEF},
+        {.text = "val", .type = TOK_KW_VAL},       {.text = "var", .type = TOK_KW_VAR},
+        {.text = "if", .type = TOK_KW_IF},         {.text = "then", .type = TOK_KW_THEN},
+        {.text = "else", .type = TOK_KW_ELSE},     {.text = "while", .type = TOK_KW_WHILE},
+        {.text = "do", .type = TOK_KW_DO},         {.text = "return", .type = TOK_KW_RETURN},
+        {.text = "Int", .type = TOK_KW_INT},       {.text = "Double", .type = TOK_KW_DOUBLE},
         {.text = "String", .type = TOK_KW_STRING}, {.text = "Unit", .type = TOK_KW_UNIT},
     };
     for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
@@ -498,7 +558,9 @@ static TokenType keyword_type(const char *text, const size_t length) {
     return TOK_IDENTIFIER;
 }
 
-static int set_token(Token *token, const TokenType type, const TokenData data, const char *text, const size_t text_length, const size_t line, const size_t column, const size_t end_line, const size_t end_column) {
+static int set_token(Token *token, const TokenType type, const TokenData data, const char *text,
+                     const size_t text_length, const size_t line, const size_t column,
+                     const size_t end_line, const size_t end_column) {
     token->type = type;
     token->data = data;
     token->text_length = 0;
