@@ -121,7 +121,8 @@ def main():
             command = ['clang-format', *mode, *map(str, sources)]
         else:
             command = ['cppcheck', '--enable=warning,style,performance,portability',
-                       '--error-exitcode=1', '--std=c11', '--inline-suppr',
+                       '--error-exitcode=1', '--check-level=exhaustive',
+                       '--std=c11', '--inline-suppr',
                        '--suppress=missingIncludeSystem', '-Isrc', 'src']
         subprocess.run(command, cwd=ROOT, check=True)
 
