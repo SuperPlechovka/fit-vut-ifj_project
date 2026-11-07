@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief Unit testy tokenizace aktuálně implementovaného lexeru.
+ * @author Jan Křepinský (xkrepij00@stud.fit.vutbr.cz)
  */
 /* AI prompt: vytvoř unit testy pro lexer podle src/lexer.h a src/token.h.
  * Ověř:
