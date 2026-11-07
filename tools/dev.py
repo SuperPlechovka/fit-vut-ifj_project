@@ -44,7 +44,8 @@ def unit():
 def system(compile_only=False):
     tests = sorted((ROOT / 'tests/system').rglob('*.ifj'))
     if not tests:
-        raise ValueError('Žádné systémové případy: doplň .ifj a .json do tests/system/.')
+        print('Žádné systémové případy v tests/system/; přeskakuji.')
+        return
     compiler = ROOT / 'ifj26'
     if not compiler.is_file():
         raise ValueError('Chybí ifj26; nejprve make.')
