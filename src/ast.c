@@ -173,6 +173,34 @@ Node *nodeReturn(Node *expr)
   return n;
 }
 
+Node *nodeIf(Node *cond, Node *then_body, Node *else_body)
+{
+  Node *n = nodeNew(N_IF);
+  if (n == NULL) {
+    nodeFree(cond);
+    nodeFree(then_body);
+    nodeFree(else_body);
+    return NULL;
+  }
+  n->left = cond;
+  n->body = then_body;
+  n->right = else_body;
+  return n;
+}
+
+Node *nodeWhile(Node *cond, Node *body)
+{
+  Node *n = nodeNew(N_WHILE);
+  if (n == NULL) {
+    nodeFree(cond);
+    nodeFree(body);
+    return NULL;
+  }
+  n->left = cond;
+  n->body = body;
+  return n;
+}
+
 Node *nodeFunc(const char *name, int is_main, TypeKind ret, Node *body)
 {
   Node *n = nodeNew(N_FUNC);
@@ -210,6 +238,7 @@ void nodeSetPos(Node *n, int line, int col)
     n->col = col;
   }
 }
+
 void nodeAppend(Node **list, Node *node)
 {
   if (list == NULL || node == NULL) {

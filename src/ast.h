@@ -2,7 +2,7 @@
 #define AST_H
 
 #include <stddef.h>
-/*AI:make nice coments in czech for this head file*/
+
 typedef enum {
   /* výrazy */
   N_LIT_INT,
@@ -17,6 +17,8 @@ typedef enum {
   N_ASSIGN,
   N_WRITE,
   N_RETURN,
+  N_IF,
+  N_WHILE,
   /* celý program */
   N_PROGRAM,
   N_FUNC
@@ -26,7 +28,8 @@ typedef enum {
   OP_NONE,
   OP_ADD, OP_SUB, OP_MUL, OP_DIV,
   OP_LT, OP_LE, OP_GT, OP_GE, OP_EQ, OP_NE,
-  OP_NEG
+  OP_NEG,
+  OP_AND, OP_OR
 } OpKind;
 
 typedef enum {
@@ -37,6 +40,7 @@ typedef enum {
   TY_UNIT,
   TY_BOOL
 } TypeKind;
+
 /*
  * Uzel abstraktního syntaktického stromu.
  *
@@ -52,15 +56,15 @@ typedef enum {
  *   N_ASSIGN                  name, left
  *   N_WRITE                   left
  *   N_RETURN                  left (výraz, nebo NULL)
+ *   N_IF                      left (podmínka), body (THEN větev), right (ELSE větev nebo NULL)
+ *   N_WHILE                   left (podmínka), body (tělo cyklu)
  *   N_FUNC                    name, is_main, type (návratový typ),
+ *                             args (seznam parametrů přes next),
  *                             body (seznam příkazů přes next)
  *   N_PROGRAM                 body (seznam funkcí přes next)
  *
- * Pole next slouží jen k řetězení sourozenců v jednom seznamu
- * (příkazy, argumenty, funkce). Nikdy neukazuje na jiný podstrom.
- *
- * Uzel vlastní všechny ukazatele, které drží (left, right, args,
- * body, next). Uvolní je nodeFree.
+ * Pole next slouží k řetězení sourozenců v jednořetězcovém seznamu
+ * (příkazy, argumenty, parametry, funkce).
  */
 typedef struct Node {
   NodeKind  kind;
@@ -68,9 +72,7 @@ typedef struct Node {
   /* operátor: u N_BINARY a N_UNARY, jinak OP_NONE */
   OpKind    op;
 
-  /* typ: u výrazů výsledný typ, u N_DECL deklarovaný typ,
-   * u N_FUNC návratový typ. Hodnotu nastavuje sémantická analýza
-   * (TY_UNKNOWN, dokud nedoběhne). */
+  /* typ: u výrazů výsledný typ, u N_DECL deklarovaný typ, u N_FUNC návratový typ */
   TypeKind  type;
 
   /* hodnoty literálů a jména */
@@ -79,16 +81,18 @@ typedef struct Node {
   double    dval;       /* hodnota N_LIT_DOUBLE */
 
   /* příznaky */
-  int       is_var;     /* N_DECL: 1 = var (modifikovatelná), 0 = val */
+  int       is_var;     /* N_DECL: 1 = var, 0 = val */
   int       is_main;    /* N_FUNC: 1 = funkce s anotací @main */
-  /* poloha ve zdrojovém souboru, z tokenu, ze kterého uzel vznikl */
+
+  /* poloha ve zdrojovém souboru */
   int       line;       /* řádek, od 1 */
   int       col;        /* sloupec, od 1 */
+
   /* potomci */
-  struct Node *left;    /* první operand, výraz, inicializace nebo NULL */
-  struct Node *right;   /* druhý operand (jen N_BINARY) */
-  struct Node *args;    /* argumenty volání (N_CALL) */
-  struct Node *body;    /* příkazy (N_FUNC) nebo funkce (N_PROGRAM) */
+  struct Node *left;    /* první operand, výraz, inicializace nebo podmínka */
+  struct Node *right;   /* druhý operand (N_BINARY) nebo ELSE větev (N_IF) */
+  struct Node *args;    /* argumenty volání (N_CALL) nebo parametry (N_FUNC) */
+  struct Node *body;    /* příkazy (N_FUNC, THEN větev u N_IF, tělo N_WHILE) nebo funkce (N_PROGRAM) */
 
   /* sourozenec v seznamu příkazů, argumentů nebo funkcí */
   struct Node *next;
@@ -110,8 +114,12 @@ Node *nodeAssign(const char *name, Node *expr);
 Node *nodeWrite(Node *expr);
 Node *nodeReturn(Node *expr);
 
+Node *nodeIf(Node *cond, Node *then_body, Node *else_body);
+Node *nodeWhile(Node *cond, Node *body);
+
 Node *nodeFunc(const char *name, int is_main, TypeKind ret, Node *body);
 Node *nodeProgram(Node *funcs);
+
 void nodeSetPos(Node *n, int line, int col);
 void nodeAppend(Node **list, Node *node);
 
