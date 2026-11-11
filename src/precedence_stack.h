@@ -1,7 +1,7 @@
-#ifndef TOKEN_STACK_H
-#define TOKEN_STACK_H
+#ifndef TOK_STACK_H
+#define TOK_STACK_H
 
-#include <scanner.h>
+#include <lexer.h>
 #include <stdbool.h>
 
 typedef enum {
@@ -43,7 +43,7 @@ int precedenceStackPop(PrecedenceStack *stack, PrecedenceSymbol *result);
 int precedenceStackPeek(const PrecedenceStack *stack, PrecedenceSymbol *result);
 bool precedenceStackIsEmpty(PrecedenceStack *stack);
 void precedenceStackDestroy(PrecedenceStack *stack);
-PrecedenceSymbol tokenToPrecSymbol(TokenKind kind);
+PrecedenceSymbol tokenToPrecSymbol(TokenType kind);
 
 typedef enum {
   REL_ERROR,

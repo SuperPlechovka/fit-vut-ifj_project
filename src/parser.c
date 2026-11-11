@@ -4,20 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-int parserInit(Parser *parser, Scanner *scanner) {
-    if (parser == NULL || scanner == NULL) {
+int parserInit(Parser *parser, Lexer *lexer) {
+    if (parser == NULL || lexer == NULL) {
         return EXIT_FAILURE;
     }
 
     memset(parser, 0, sizeof(*parser));
-    parser->scanner = scanner;
+    parser->lexer = lexer;
 
-    if (scannerNextToken(scanner, &parser->current) != 0) {
+    if (next_token(lexer, &parser->current) != 0) {
         return EXIT_FAILURE;
     }
 
-    if (scannerNextToken(scanner, &parser->lookahead) != 0) {
-        tokenFree(&parser->current);
+    if (next_token(lexer, &parser->lookahead) != 0) {
+        token_free(&parser->current);
         memset(&parser->current, 0, sizeof(parser->current));
         return EXIT_FAILURE;
     }
@@ -30,22 +30,22 @@ void parserDestroy(Parser *parser) {
         return;
     }
 
-    tokenFree(&parser->current);
-    tokenFree(&parser->lookahead);
+    token_free(&parser->current);
+    token_free(&parser->lookahead);
 }
 
 int parserAdvance(Parser *parser) {
-    if (parser == NULL || parser->scanner == NULL) {
+    if (parser == NULL || parser->lexer == NULL) {
         return EXIT_FAILURE;
     }
 
     Token next;
 
-    if (scannerNextToken(parser->scanner, &next) != 0) {
+    if (next_token(parser->lexer, &next) != 0) {
         return EXIT_FAILURE;
     }
 
-    tokenFree(&parser->current);
+    token_free(&parser->current);
     parser->current = parser->lookahead;
     memset(&parser->lookahead, 0, sizeof(parser->lookahead));
     parser->lookahead = next;
@@ -53,13 +53,13 @@ int parserAdvance(Parser *parser) {
     return EXIT_SUCCESS;
 }
 
-static PrecedenceSymbol expressionInputSymbol(TokenKind kind) {
+static PrecedenceSymbol expressionInputSymbol(TokenType kind) {
     switch (kind) {
-    case TOKEN_NEWLINE:
-    case TOKEN_SEMICOLON:
-    case TOKEN_COMMA:
-    case TOKEN_DEDENT:
-    case TOKEN_EOF:
+    case TOK_NEWLINE:
+    case TOK_SEMICOLON:
+    case TOK_COMMA:
+    case TOK_DEDENT:
+    case TOK_EOF:
         return PREC_END;
 
     default:
@@ -158,7 +158,7 @@ int parseExpression(Parser *parser, ParseError *error, Node *result) {
     }
 
     while (precedenceStackIsFinished(&symbols) != 0 &&
-           tokenToPrecSymbol(parser->current.kind) != PREC_END) {
+           tokenToPrecSymbol(parser->current.type) != PREC_END) {
         PrecedenceRelation relation;
         if (getPrecedenceRelation(&symbols, &relation) != 0) {
             return EXIT_FAILURE;
@@ -172,7 +172,7 @@ int parseExpression(Parser *parser, ParseError *error, Node *result) {
             }
 
         case REL_EQUAL:
-            precedenceStackPush(&symbols, tokenToPrecSymbol(parser->current.kind));
+            precedenceStackPush(&symbols, tokenToPrecSymbol(parser->current.type));
             parserAdvance(parser);
             break;
         case REL_REDUCE:

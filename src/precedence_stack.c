@@ -5,27 +5,27 @@
 #define PREC_TERMINAL_COUNT 15
 #define INIT_STACK_CAPACITY 128
 
-PrecedenceSymbol tokenToPrecSymbol(TokenKind kind)
+PrecedenceSymbol tokenToPrecSymbol(TokenType kind)
 {
     switch (kind) {
-        case TOKEN_PLUS:    return PREC_PLUS;
-        case TOKEN_MINUS:   return PREC_MINUS;
-        case TOKEN_STAR:    return PREC_MUL;
-        case TOKEN_SLASH:   return PREC_DIV;
-        case TOKEN_LT:      return PREC_LT;
-        case TOKEN_LE:      return PREC_LE;
-        case TOKEN_GT:      return PREC_GT;
-        case TOKEN_GE:      return PREC_GE;
-        case TOKEN_EQ:      return PREC_EQ;
-        case TOKEN_NEQ:     return PREC_NEQ;
-        case TOKEN_LPAREN:  return PREC_LPAREN;
-        case TOKEN_RPAREN:  return PREC_RPAREN;
-        case TOKEN_EOF:     return PREC_END;
+        case TOK_PLUS:    return PREC_PLUS;
+        case TOK_MINUS:   return PREC_MINUS;
+        case TOK_STAR:    return PREC_MUL;
+        case TOK_SLASH:   return PREC_DIV;
+        case TOK_LT:      return PREC_LT;
+        case TOK_LE:      return PREC_LE;
+        case TOK_GT:      return PREC_GT;
+        case TOK_GE:      return PREC_GE;
+        case TOK_EQ:      return PREC_EQ;
+        case TOK_NEQ:     return PREC_NEQ;
+        case TOK_LPAREN:  return PREC_LPAREN;
+        case TOK_RPAREN:  return PREC_RPAREN;
+        case TOK_EOF:     return PREC_END;
 
-        case TOKEN_IDENTIFIER:
-        case TOKEN_INT_LITERAL:
-        case TOKEN_DOUBLE_LITERAL:
-        case TOKEN_STRING_LITERAL:
+        case TOK_IDENTIFIER:
+        case TOK_INT_LITERAL:
+        case TOK_DOUBLE_LITERAL:
+        case TOK_STRING_LITERAL:
             return PREC_OPERAND;
 
         default:

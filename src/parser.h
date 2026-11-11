@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include "../tmp/ast.h"
-#include "scanner.h"
+#include "lexer.h"
 
 typedef struct {
   int code;
@@ -13,12 +13,12 @@ typedef struct {
 } ParseError;
 
 typedef struct {
-  Scanner *scanner;
+  Lexer *lexer;
   Token current;
   Token lookahead;
 } Parser;
 
-int parserInit(Parser *parser, Scanner *scanner);
+int parserInit(Parser *parser, Lexer *lexer);
 void parserDestroy(Parser *parser);
 int parserAdvance(Parser *parser);
 int parseExpression(Parser *parser, ParseError *error, Node *result);
