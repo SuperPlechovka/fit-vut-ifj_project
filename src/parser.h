@@ -2,7 +2,7 @@
 #define PARSER_H
 
 #include <stddef.h>
-#include "ast.h"
+#include "../tmp/ast.h"
 #include "scanner.h"
 
 typedef struct {

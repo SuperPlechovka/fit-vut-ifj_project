@@ -2,7 +2,7 @@
 #define NODE_STACK_H
 
 #include <stdbool.h>
-#include "ast.h"
+#include "../tmp/ast.h"
 #include <stddef.h>
 
 typedef struct {
