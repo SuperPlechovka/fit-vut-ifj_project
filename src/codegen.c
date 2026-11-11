@@ -117,5 +117,37 @@ void gen_type(char *var, char *symb) {
     printf("TYPE %s %s\n", var, symb);
 }
 
+// Pomocné funkcie pre správny zápis konštánt, escape sekvencií a hodnoty Unit
+void gen_const_int(long long val) {
+    printf("int@%lld", val);
+}
+
+void gen_const_float(double val) {
+    printf("float@%a", val);
+}
+
+void gen_const_bool(int val) {
+    printf("bool@%s", val ? "true" : "false");
+}
+
+void gen_const_unit(void) {
+    printf("nil@nil");
+}
+
+void gen_const_string(const char *str) {
+    printf("string@");
+    if (str == NULL) {
+        return;
+    }
+    for (int i = 0; str[i] != '\0'; i++) {
+        unsigned char c = (unsigned char)str[i];
+        if (c <= 32 || c == '#' || c == '\\') {
+            printf("\\%03d", c);
+        } else {
+            putchar(c);
+        }
+    }
+}
+
 void gen_footer(void) {
 }

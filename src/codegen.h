@@ -188,6 +188,35 @@ void gen_setchar(char *var, char *symb1, char *symb2);
 void gen_type(char *var, char *symb);
 
 /**
+ * @brief Vypíše celočíselnú konštantu vo formáte int@hodnota.
+ * @param[in] val Celočíselná hodnota (long long).
+ */
+void gen_const_int(long long val);
+
+/**
+ * @brief Vypíše desatinnú konštantu v hexadecimálnom formáte float@hodnota.
+ * @param[in] val Desatinná hodnota (double).
+ */
+void gen_const_float(double val);
+
+/**
+ * @brief Vypíše pravdivostnú konštantu vo formáte bool@true/bool@false.
+ * @param[in] val Pravdivostná hodnota (0 = false, inak true).
+ */
+void gen_const_bool(int val);
+
+/**
+ * @brief Vypíše konštantu reprezentujúcu hodnotu Unit (nil@nil).
+ */
+void gen_const_unit(void);
+
+/**
+ * @brief Vypíše reťazcovú konštantu vo formáte string@... s ošetrením escape sekvencií.
+ * @param[in] str Vstupný C reťazec.
+ */
+void gen_const_string(const char *str);
+
+/**
  * @brief Ukončenie generovania cieľového kódu.
  */
 void gen_footer(void);
