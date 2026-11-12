@@ -1,5 +1,6 @@
 #include <node_stack.h>
 #include <stdlib.h>
+#include "../tmp/ast.h"
 
 #define INIT_STACK_CAPACITY 128
 
@@ -14,7 +15,7 @@ int nodeStackInit(NodeStack *stack)
     stack->items = arr;
     stack->capacity = INIT_STACK_CAPACITY;
     stack->size = 0;
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -31,7 +32,7 @@ int nodeStackPush(NodeStack *stack, Node *node)
         stack->items = result;
         stack->capacity = new_capacity;
     }
-    
+
 
     if (stack->size < stack->capacity)
     {
@@ -61,7 +62,7 @@ int nodeStackPeek(const NodeStack *stack, Node **result)
     {
         return EXIT_FAILURE;
     }
-    
+
     *result = stack->items[stack->size - 1];
     return EXIT_SUCCESS;
 }
@@ -77,6 +78,6 @@ void nodeStackDestroy(NodeStack *stack)
     {
         nodeFree(stack->items[i]);
     }
-    
+
     free(stack->items);
 }

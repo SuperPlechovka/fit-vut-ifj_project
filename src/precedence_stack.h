@@ -28,7 +28,7 @@ typedef enum {
     PREC_NONTERMINAL,
     PREC_BOUNDARY,
 
-    PREC_INVALID, 
+    PREC_INVALID,
 } PrecedenceSymbol;
 
 typedef struct {
@@ -53,7 +53,7 @@ typedef enum {
 } PrecedenceRelation;
 
 PrecedenceRelation getPrecedenceRelation(
-  PrecedenceSymbol stackSymbol, 
+  PrecedenceSymbol stackSymbol,
   PrecedenceSymbol inputSymbol
 );
 
@@ -61,6 +61,5 @@ int stackTopTerminal(const PrecedenceStack *stack, PrecedenceSymbol *result);
 
 bool precedenceStackIsFinished(const PrecedenceStack *stack);
 int precedenceStackPushAfterTopTerminal(PrecedenceStack *stack, PrecedenceSymbol symbol);
-static int isTerminal(PrecedenceSymbol symbol);
 
 #endif

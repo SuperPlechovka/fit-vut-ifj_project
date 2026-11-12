@@ -1,26 +1,28 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <stddef.h>
-#include "../tmp/ast.h"
+#include "error.h"
 #include "lexer.h"
+#include "token.h"
+#include <stddef.h>
 
 typedef struct {
-  int code;
-  size_t line;
-  size_t column;
-  const char *message;
+    int code;
+    size_t line;
+    size_t column;
+    const char *message;
 } ParseError;
 
 typedef struct {
-  Lexer *lexer;
-  Token current;
-  Token lookahead;
+    Lexer *lexer;
+    Token current;
+    Token lookahead;
 } Parser;
 
 int parserInit(Parser *parser, Lexer *lexer);
 void parserDestroy(Parser *parser);
-int parserAdvance(Parser *parser);
-int parseExpression(Parser *parser, ParseError *error, Node *result);
+ErrorCode parserAdvance(Parser *parser, ParseError *error);
+ErrorCode setParserError(ParseError *error, ErrorCode code, const Token *at, const char *message);
+ErrorCode parserAdvance(Parser *parser, ParseError *error);
 
 #endif
