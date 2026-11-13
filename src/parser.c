@@ -1,27 +1,39 @@
-#include "error.h"
 #include "parser.h"
 #include <stdlib.h>
 #include <string.h>
 
-int parserInit(Parser *parser, Lexer *lexer) {
+static ErrorCode readToken(Parser *parser, Token *out, ParseError *error) {
+    LexerResult rc = next_token(parser->lexer, out);
+    if (rc == LEXER_OK) {
+        return ERR_OK;
+    }
+
+    ErrorCode code = (rc == LEXER_ERROR) ? ERR_LEXICAL : ERR_INTERNAL;
+    return setParserErrorAt(error, code, parser->lexer->line, parser->lexer->column,
+                            code == ERR_LEXICAL ? "invalid token" : "lexer internal error");
+}
+
+ErrorCode parserInit(Parser *parser, Lexer *lexer, ParseError *error) {
     if (parser == NULL || lexer == NULL) {
-        return EXIT_FAILURE;
+        return setParserError(error, ERR_INTERNAL, NULL, "invalid parser arguments");
     }
 
     memset(parser, 0, sizeof(*parser));
     parser->lexer = lexer;
 
-    if (next_token(lexer, &parser->current) != 0) {
-        return EXIT_FAILURE;
+    int rc = readToken(parser, &parser->current, error);
+    if (rc != ERR_OK) {
+        return rc;
     }
 
-    if (next_token(lexer, &parser->lookahead) != 0) {
+    rc = readToken(parser, &parser->lookahead, error);
+    if (rc != ERR_OK) {
         token_free(&parser->current);
         memset(&parser->current, 0, sizeof(parser->current));
-        return EXIT_FAILURE;
+        return rc;
     }
 
-    return EXIT_SUCCESS;
+    return ERR_OK;
 }
 
 void parserDestroy(Parser *parser) {
@@ -34,7 +46,7 @@ void parserDestroy(Parser *parser) {
 }
 
 ErrorCode setParserErrorAt(ParseError *error, ErrorCode code, size_t line, size_t column,
-                                  const char *message) {
+                           const char *message) {
     if (error != NULL && error->code == ERR_OK) {
         error->code = code;
         error->line = line;
@@ -44,8 +56,7 @@ ErrorCode setParserErrorAt(ParseError *error, ErrorCode code, size_t line, size_
     return code;
 }
 
-ErrorCode setParserError(ParseError *error, ErrorCode code, const Token *at,
-                                const char *message) {
+ErrorCode setParserError(ParseError *error, ErrorCode code, const Token *at, const char *message) {
     return setParserErrorAt(error, code, at ? at->line : 0, at ? at->column : 0, message);
 }
 
@@ -55,11 +66,9 @@ ErrorCode parserAdvance(Parser *parser, ParseError *error) {
     }
 
     Token next;
-    int lex_rc = next_token(parser->lexer, &next);
-    if (lex_rc != LEXER_OK) {
-        ErrorCode code = (lex_rc == LEXER_ERROR) ? ERR_LEXICAL : ERR_INTERNAL;
-        return setParserErrorAt(error, code, parser->lexer->line, parser->lexer->column,
-                                code == ERR_LEXICAL ? "invalid token" : "lexer internal error");
+    int rc = readToken(parser, &next, error);
+    if (rc != ERR_OK) {
+        return rc;
     }
 
     token_free(&parser->current);

@@ -9,11 +9,13 @@
  * - závorky a vnořené závorky;
  * - vyšší prioritu relačních operátorů než == a != (a < b == c);
  * - unární minus (-a, a * -b, a - -b, -(a + b));
+ * - literál Unit () jako samostatný výraz, v závorkách, jako operand a jeho pozici;
  * - literály Int, Double a String a identifikátory;
  * - ukončení výrazu tokenem, který do výrazu nepatří (then, do, NEWLINE, =),
  *   který po návratu zůstane v parser.current;
  * - pozice listů AST;
- * - syntaktické chyby (a < b < c, a == b == c, a +, a b, (a, a), prázdný výraz) - kód 2;
+ * - syntaktické chyby (a < b < c, a == b == c, a +, a b, (a, a), prázdný výraz,
+ *   binární operátor na začátku výrazu, () za operandem) - kód 2;
  * - lexikální chybu uvnitř výrazu - kód 1.
  * Model: Claude Opus 5.5, Claude Code.
  */
@@ -41,7 +43,7 @@ static void run_expression(ExprRun *run, const char *text) {
     rewind(run->input);
 
     assert(lexer_init(&run->lexer, run->input) == LEXER_OK);
-    assert(parserInit(&run->parser, &run->lexer) == EXIT_SUCCESS);
+    assert(parserInit(&run->parser, &run->lexer, &run->error) == ERR_OK);
     run->code = parseExpression(&run->parser, &run->error, &run->result);
 }
 
@@ -100,6 +102,9 @@ static void ast_to_text(const Node *node, char *buffer, size_t size) {
         break;
     case N_LIT_STRING:
         snprintf(out, left, "\"%s\"", node->name);
+        break;
+    case N_LIT_UNIT:
+        snprintf(out, left, "()");
         break;
     case N_VAR:
         snprintf(out, left, "%s", node->name);
@@ -191,6 +196,31 @@ static void test_operands(void) {
     expect_tree("1.5 + \"s\"", "(1.5 + \"s\")", TOK_EOF);
 }
 
+static void test_unit_literal(void) {
+    expect_tree("()", "()", TOK_EOF);
+    expect_tree("( )", "()", TOK_EOF);
+    expect_tree("(())", "()", TOK_EOF);
+    expect_tree("() + a", "(() + a)", TOK_EOF);
+    expect_tree("a == ()", "(a == ())", TOK_EOF);
+    expect_tree("-()", "(-())", TOK_EOF);
+    expect_tree("() then", "()", TOK_KW_THEN);
+    expect_tree("()\nx", "()", TOK_NEWLINE);
+
+    /* pozice literálu je pozice otevírací závorky */
+    ExprRun run;
+    run_expression(&run, "a + ()");
+    assert(run.code == ERR_OK);
+    assert(run.result != NULL && run.result->kind == N_BINARY);
+    assert(run.result->right->kind == N_LIT_UNIT);
+    assert(run.result->right->type == TY_UNIT);
+    if (run.result->right->line != 1 || run.result->right->col != 5) {
+        fprintf(stderr, "'a + ()': pozice () očekávána 1:5, dostal %d:%d\n",
+                run.result->right->line, run.result->right->col);
+    }
+    assert(run.result->right->line == 1 && run.result->right->col == 5);
+    finish(&run);
+}
+
 static void test_expression_end(void) {
     expect_tree("a < b then", "(a < b)", TOK_KW_THEN);
     expect_tree("x > 0 do", "(x > 0)", TOK_KW_DO);
@@ -215,7 +245,12 @@ static void test_errors(void) {
     expect_error("a b", ERR_SYNTAX);
     expect_error("(a", ERR_SYNTAX);
     expect_error("a)", ERR_SYNTAX);
-    expect_error("()", ERR_SYNTAX);
+    expect_error("a ()", ERR_SYNTAX);
+    expect_error("() a", ERR_SYNTAX);
+    expect_error("+ a", ERR_SYNTAX);
+    expect_error("* a", ERR_SYNTAX);
+    expect_error("< a", ERR_SYNTAX);
+    expect_error("(+ a)", ERR_SYNTAX);
     expect_error("", ERR_SYNTAX);
     expect_error("then", ERR_SYNTAX);
     expect_error("a + 1.2.3", ERR_LEXICAL);
@@ -226,6 +261,7 @@ int main(void) {
     test_parentheses();
     test_unary_minus();
     test_operands();
+    test_unit_literal();
     test_expression_end();
     test_leaf_position();
     test_errors();

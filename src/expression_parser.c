@@ -1,7 +1,7 @@
-#include "parser.h"
 #include "../tmp/ast.h"
 #include "error.h"
 #include "node_stack.h"
+#include "parser.h"
 #include "precedence_stack.h"
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +41,7 @@ static OpKind binaryOpFromPrec(PrecedenceSymbol symbol) {
 }
 
 static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseError *error,
-                        const Token *token) {
+                              const Token *token, SourcePos lparen) {
     if (symbols == NULL || nodes == NULL || error == NULL) {
         return setParserError(error, ERR_INTERNAL, token, "invalid function arguments");
     }
@@ -91,6 +91,18 @@ static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseE
             return setParserError(error, ERR_INTERNAL, token,
                                   "out of memory (failed to push onto stack)");
         }
+    } else if (handle_size == 2 && handle[0] == PREC_LPAREN && handle[1] == PREC_RPAREN) {
+        // E -> ()
+        Node *n = nodeLitUnit();
+
+        if (n == NULL || nodeStackPush(nodes, n) != EXIT_SUCCESS) {
+            nodeFree(n);
+            return setParserError(error, ERR_INTERNAL, token,
+                                  "out of memory ( failed to push onto stack )");
+        }
+
+        nodeSetPos(n, (int)lparen.line, (int)lparen.column);
+
     } else if (handle_size == 3 && handle[0] == PREC_NONTERMINAL && handle[2] == PREC_NONTERMINAL &&
                binaryOpFromPrec(handle[1]) != OP_NONE) {
         // E -> E op E
@@ -122,7 +134,8 @@ static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseE
     }
 
     if (precedenceStackPush(symbols, PREC_NONTERMINAL) != EXIT_SUCCESS) {
-        return setParserError(error, ERR_INTERNAL, token, "out of memory (failed to push onto stack)");
+        return setParserError(error, ERR_INTERNAL, token,
+                              "out of memory (failed to push onto stack)");
     }
 
     return ERR_OK;
@@ -158,6 +171,8 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
                               "out of memory (failed to push onto stack)");
     }
 
+    SourcePos lparen = {0};
+
     while (true) {
         PrecedenceSymbol top;
         if (stackTopTerminal(symbols, &top) != EXIT_SUCCESS) {
@@ -187,6 +202,11 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
             }
         // fall-through
         case REL_EQUAL:
+            if (input == PREC_LPAREN) {
+                lparen.line = parser->current.line;
+                lparen.column = parser->current.column;
+            }
+
             if (input == PREC_OPERAND) {
                 Node *leaf = nodeFromToken(&parser->current);
                 if (leaf == NULL || nodeStackPush(nodes, leaf) != EXIT_SUCCESS) {
@@ -208,7 +228,8 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
 
             break;
         case REL_REDUCE: {
-            ErrorCode rc = handleReduce(symbols, nodes, error, &parser->current);
+            ErrorCode rc =
+                handleReduce(symbols, nodes, error, &parser->current, lparen);
             if (rc != ERR_OK) {
                 return rc;
             }

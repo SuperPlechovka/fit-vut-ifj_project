@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 typedef struct {
-    int code;
+    ErrorCode code;
     size_t line;
     size_t column;
     const char *message;
@@ -19,10 +19,15 @@ typedef struct {
     Token lookahead;
 } Parser;
 
-int parserInit(Parser *parser, Lexer *lexer);
+typedef struct {
+    size_t line, column;
+} SourcePos;
+
+ErrorCode parserInit(Parser *parser, Lexer *lexer, ParseError *error);
 void parserDestroy(Parser *parser);
-ErrorCode parserAdvance(Parser *parser, ParseError *error);
 ErrorCode setParserError(ParseError *error, ErrorCode code, const Token *at, const char *message);
+ErrorCode setParserErrorAt(ParseError *error, ErrorCode code, size_t line, size_t column,
+                           const char *message);
 ErrorCode parserAdvance(Parser *parser, ParseError *error);
 
 #endif
