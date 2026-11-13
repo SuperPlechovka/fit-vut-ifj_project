@@ -5,8 +5,8 @@
  * @author Magdaléna Somorovská (xsomorm00)
  */
 
-#include "../src/codegen.h"
-#include "../src/ilist.h"
+#include "codegen.h"
+#include "ilist.h"
 #include <stdio.h>
 
 /* Test aritmetických, relačných operácií a konštánt */
