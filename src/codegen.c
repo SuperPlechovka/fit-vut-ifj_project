@@ -149,5 +149,94 @@ void gen_const_string(const char *str) {
     }
 }
 
+// Prevod vnútorného kódu (ListOfInstr) na cieľový kód IFJcode26
+static void gen_operand(const Operand *op) {
+    if (op == NULL) {
+    return;
+    }
+    if (op->kind == OPD_INT) {
+        gen_const_int(op->val.i);
+    } else if (op->kind == OPD_FLOAT) {
+        gen_const_float(op->val.d);
+    } else if (op->kind == OPD_STRING) {
+        gen_const_string(op->name);
+    } else if (op->kind == OPD_BOOL) {
+        gen_const_bool(op->val.b);
+    } else if (op->kind == OPD_NIL) {
+        gen_const_unit();
+    } else if (op->kind == OPD_VAR) {
+        if (op->frame == FR_GF) {
+            printf("GF@%s", op->name);
+        } else if (op->frame == FR_LF) {
+            printf("LF@%s", op->name);
+        } else if (op->frame == FR_TF) {
+            printf("TF@%s", op->name);
+        }
+    } else if (op->kind == OPD_LABEL || op->kind == OPD_TYPE) {
+        printf("%s", op->name);
+    }
+}
+
+void codegen_generate(const ListOfInstr *list) {
+    static const char *instr_names[I_COUNT] = {
+        [I_MOVE] = "MOVE", [I_CREATEFRAME] = "CREATEFRAME", [I_PUSHFRAME] = "PUSHFRAME",
+        [I_POPFRAME] = "POPFRAME", [I_DEFVAR] = "DEFVAR", [I_CALL] = "CALL",
+        [I_RETURN] = "RETURN", [I_PUSHS] = "PUSHS", [I_POPS] = "POPS",
+        [I_ADD] = "ADD", [I_SUB] = "SUB", [I_MUL] = "MUL", [I_DIV] = "DIV",
+        [I_IDIV] = "IDIV", [I_LT] = "LT", [I_GT] = "GT", [I_EQ] = "EQ",
+        [I_AND] = "AND", [I_OR] = "OR", [I_NOT] = "NOT",
+        [I_INT2FLOAT] = "INT2FLOAT", [I_FLOAT2INT] = "FLOAT2INT",
+        [I_INT2CHAR] = "INT2CHAR", [I_STRI2INT] = "STRI2INT",
+        [I_INT2STR] = "INT2STR", [I_FLOAT2STR] = "FLOAT2STR",
+        [I_READ] = "READ", [I_WRITE] = "WRITE", [I_CONCAT] = "CONCAT",
+        [I_STRLEN] = "STRLEN", [I_GETCHAR] = "GETCHAR", [I_SETCHAR] = "SETCHAR",
+        [I_TYPE] = "TYPE", [I_LABEL] = "LABEL", [I_JUMP] = "JUMP",
+        [I_JUMPIFEQ] = "JUMPIFEQ", [I_JUMPIFNEQ] = "JUMPIFNEQ", [I_EXIT] = "EXIT",
+        [I_BREAK] = "BREAK", [I_DPRINT] = "DPRINT"
+    };
+
+
+    gen_header();
+
+    if (list == NULL) {
+        gen_exit(0);
+        return;
+    }
+
+    int exit = 0;
+    const ListItem *it = list->first;
+    while (it != NULL) {
+        printf("%s", instr_names[it->instr.type]);
+
+        if (it->instr.a1.kind != OPD_NONE) {
+            printf(" ");
+            gen_operand(&it->instr.a1);
+        }
+        if (it->instr.a2.kind != OPD_NONE) {
+            printf(" ");
+            gen_operand(&it->instr.a2);
+        }
+        if (it->instr.a3.kind != OPD_NONE) {
+            printf(" ");
+            gen_operand(&it->instr.a3);
+        }
+        printf("\n");
+        if (it->instr.type == I_EXIT) {
+            exit = 1;
+        }
+
+        it = it->next;
+    }
+    if (!exit) {
+        gen_exit(0);
+    }
+
+}
+
+void gen_exit(int code) {
+    printf("EXIT int@%d\n", code);
+}
+
 void gen_footer(void) {
+    gen_exit(0);
 }

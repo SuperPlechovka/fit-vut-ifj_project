@@ -7,6 +7,7 @@
 
 #ifndef CODEGEN_H
 #define CODEGEN_H
+#include "ilist.h"
 
 /**
  * @brief Výpis hlavičky jazyka IFJcode26.
@@ -220,5 +221,17 @@ void gen_const_string(const char *str);
  * @brief Ukončenie generovania cieľového kódu.
  */
 void gen_footer(void);
+
+/**
+ * @brief Prevedie vnútorný kód do cieľového kódu IFJcode26 na stdout.
+ * @param[in] list Ukazovateľ na zoznam inštrukcií vnútorného kódu.
+ */
+void codegen_generate(const ListOfInstr *list);
+
+/**
+ * @brief Ukončí vykonávanie programu s daným návratovým kódom.
+ * @param[in] code Návratový kód (0 až 99).
+ */
+void gen_exit(int code);
 
 #endif 
