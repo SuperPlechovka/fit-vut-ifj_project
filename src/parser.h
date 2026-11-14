@@ -34,7 +34,7 @@ ErrorCode parserAdvance(Parser *parser, ParseError *error);
 Node *nodeFromToken(const Token *token);
 
 // not a part of the actual API, but unit tests need to see them
-ErrorCode parseTypeOpt(Parser *parser, ParseError *error, TypeKind *out);
 ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result);
+ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result);
 
 #endif

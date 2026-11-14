@@ -118,7 +118,7 @@ static ErrorCode parseType(Parser *parser, ParseError *error, TypeKind *out) {
     return parserAdvance(parser, error);
 }
 
-ErrorCode parseTypeOpt(Parser *parser, ParseError *error, TypeKind *out) {
+static ErrorCode parseTypeOpt(Parser *parser, ParseError *error, TypeKind *out) {
     if (!isTokenTypeEqual(parser, TOK_COLON)) {
         *out = TY_UNKNOWN;
         return ERR_OK;
@@ -242,4 +242,137 @@ ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result) {
         return parseCall(parser, error, result);
     }
     return parseExpression(parser, error, result);
+}
+
+static ErrorCode parseReturn(Parser *parser, ParseError *error, Node **result) {
+    size_t line = parser->current.line, column = parser->current.column;
+
+    ErrorCode code = expect(parser, TOK_KW_RETURN, error);
+
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    Node *ret;
+
+    if (isTokenTypeEqual(parser, TOK_NEWLINE) || isTokenTypeEqual(parser, TOK_SEMICOLON) ||
+        isTokenTypeEqual(parser, TOK_DEDENT) || isTokenTypeEqual(parser, TOK_EOF)) {
+
+        ret = nodeReturn(NULL);
+
+        if (ret == NULL) {
+            return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+        }
+
+        nodeSetPos(ret, (int)line, (int)column);
+        *result = ret;
+
+        return ERR_OK;
+    }
+
+    Node *expr;
+    code = parseExprOrCall(parser, error, &expr);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    ret = nodeReturn(expr);
+
+    if (ret == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    nodeSetPos(ret, (int)line, (int)column);
+    *result = ret;
+    return ERR_OK;
+}
+
+static ErrorCode parseVarDef(Parser *parser, ParseError *error, Node **result) {
+    int is_var = isTokenTypeEqual(parser, TOK_KW_VAR);
+    size_t line = parser->current.line, column = parser->current.column;
+
+    ErrorCode code = parserAdvance(parser, error);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    if (!isTokenTypeEqual(parser, TOK_IDENTIFIER)) {
+        return setParserError(error, ERR_SYNTAX, &parser->current, "expected identifier");
+    }
+
+    Node *decl = nodeDecl(parser->current.data.text, is_var, TY_UNKNOWN, NULL);
+    if (decl == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    nodeSetPos(decl, (int)line, (int)column);
+
+    code = parserAdvance(parser, error);
+    if (code == ERR_OK) {
+        code = parseTypeOpt(parser, error, &decl->type);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_ASSIGN, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseExprOrCall(parser, error, &decl->left);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(decl);
+        return code;
+    }
+
+    *result = decl;
+    return ERR_OK;
+}
+
+ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result) {
+    if (parser == NULL || error == NULL || result == NULL) {
+        return setParserError(error, ERR_INTERNAL, NULL, "invalid parseSimpleStatement arguments");
+    }
+
+    *result = NULL;
+
+    if (isTokenTypeEqual(parser, TOK_KW_VAL) || isTokenTypeEqual(parser, TOK_KW_VAR)) {
+        // 32: <simple_stmt> -> <var_def>
+        return parseVarDef(parser, error, result);
+    }
+
+    if (isTokenTypeEqual(parser, TOK_KW_RETURN)) {
+        // return
+        return parseReturn(parser, error, result);
+    }
+
+    if (isTokenTypeEqual(parser, TOK_IDENTIFIER) && parser->lookahead.type == TOK_ASSIGN) {
+        // <simple_statement> -> id = <expr_or_call>
+
+        Node *assign = nodeAssign(parser->current.data.text, NULL);
+
+        if (assign == NULL) {
+            return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+        }
+        nodeSetPos(assign, (int)parser->current.line, (int)parser->current.column);
+
+        ErrorCode code = parserAdvance(parser, error);
+        if (code == ERR_OK) {
+            code = parserAdvance(parser, error);
+        }
+
+        if (code == ERR_OK) {
+            code = parseExprOrCall(parser, error, &assign->left);
+        }
+
+        if (code != ERR_OK) {
+            nodeFree(assign);
+            return code;
+        }
+
+        *result = assign;
+        return code;
+    }
+
+    return parseExprOrCall(parser, error, result);
 }
