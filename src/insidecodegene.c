@@ -277,6 +277,7 @@ static Operand genExpr(Gen *g, Node *n)
 
   switch (n->kind) {
     case N_LIT_INT:    return opInt(n->ival);
+    case N_LIT_UNIT:   return opNil();
     case N_LIT_DOUBLE: return opFloat(n->dval);
     case N_LIT_STRING: return opString(n->name);
     case N_VAR:        return opVar(g->frame, n->name);
@@ -370,13 +371,17 @@ static void genStmt(Gen *g, Node *n)
       break;
 
     case N_WRITE:
-      val = genExpr(g, n->left);
-      if (g->err) {
-        dropOp(&val);
-        break;
-      }
-      emit(&g->body, I_WRITE, val, opNone(), opNone());
-      break;
+  if (n->left != NULL && n->left->type == TY_UNIT) {
+    emit(&g->body, I_WRITE, opString("()"), opNone(), opNone());
+    break;
+  }
+  val = genExpr(g, n->left);
+  if (g->err) {
+    dropOp(&val);
+    break;
+  }
+  emit(&g->body, I_WRITE, val, opNone(), opNone());
+  break;
 
     case N_RETURN:
       if (n->left != NULL) {
@@ -408,6 +413,8 @@ static void genStmt(Gen *g, Node *n)
       val = genCall(g, n, 0);
       dropOp(&val);
       break;
+    case N_LIT_UNIT:
+     break;
 
     default:
       fail(g, "Neznámý druh příkazu");
