@@ -128,10 +128,9 @@ void emit(ListOfInstr *L, InstrType t, Operand a1, Operand a2, Operand a3)
 {
   Instr I;
   I.type = t;
-
-  I.a1 = opDup(a1);
-  I.a2 = opDup(a2);
-  I.a3 = opDup(a3);
+  I.a1 = a1;
+  I.a2 = a2;
+  I.a3 = a3;
   listInsertLast(L, I);
 }
 
