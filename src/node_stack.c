@@ -1,14 +1,12 @@
+#include "../tmp/ast.h"
 #include <node_stack.h>
 #include <stdlib.h>
-#include "../tmp/ast.h"
 
 #define INIT_STACK_CAPACITY 128
 
-int nodeStackInit(NodeStack *stack)
-{
+int nodeStackInit(NodeStack *stack) {
     Node **arr = malloc(sizeof(*arr) * INIT_STACK_CAPACITY);
-    if (arr == NULL)
-    {
+    if (arr == NULL) {
         return EXIT_FAILURE;
     }
 
@@ -19,33 +17,26 @@ int nodeStackInit(NodeStack *stack)
     return EXIT_SUCCESS;
 }
 
-int nodeStackPush(NodeStack *stack, Node *node)
-{
-    if (stack->size >= stack->capacity)
-    {
+int nodeStackPush(NodeStack *stack, Node *node) {
+    if (stack->size >= stack->capacity) {
         size_t new_capacity = stack->capacity * 2;
         void *result = realloc(stack->items, new_capacity * sizeof *stack->items);
-        if (result == NULL)
-        {
+        if (result == NULL) {
             return EXIT_FAILURE;
         }
         stack->items = result;
         stack->capacity = new_capacity;
     }
 
-
-    if (stack->size < stack->capacity)
-    {
+    if (stack->size < stack->capacity) {
         stack->items[stack->size] = node;
         stack->size++;
     }
     return EXIT_SUCCESS;
 }
 
-int nodeStackPop(NodeStack *stack, Node **result)
-{
-    if (stack == NULL || result == NULL || stack->size <= 0)
-    {
+int nodeStackPop(NodeStack *stack, Node **result) {
+    if (stack == NULL || result == NULL || stack->size <= 0) {
         return EXIT_FAILURE;
     }
 
@@ -56,10 +47,8 @@ int nodeStackPop(NodeStack *stack, Node **result)
     return EXIT_SUCCESS;
 }
 
-int nodeStackPeek(const NodeStack *stack, Node **result)
-{
-    if (stack == NULL || result == NULL || stack->size == 0)
-    {
+int nodeStackPeek(const NodeStack *stack, Node **result) {
+    if (stack == NULL || result == NULL || stack->size == 0) {
         return EXIT_FAILURE;
     }
 
@@ -67,15 +56,10 @@ int nodeStackPeek(const NodeStack *stack, Node **result)
     return EXIT_SUCCESS;
 }
 
-bool nodeStackIsEmpty(NodeStack *stack)
-{
-    return stack->size == 0;
-}
+bool nodeStackIsEmpty(NodeStack *stack) { return stack->size == 0; }
 
-void nodeStackDestroy(NodeStack *stack)
-{
-    for (size_t i = 0; i< stack->size; i++)
-    {
+void nodeStackDestroy(NodeStack *stack) {
+    for (size_t i = 0; i < stack->size; i++) {
         nodeFree(stack->items[i]);
     }
 

@@ -141,29 +141,6 @@ static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseE
     return ERR_OK;
 }
 
-// Creates AST leaf node from token operand. Returns NULL if alocation fails.
-static Node *nodeFromToken(const Token *token) {
-    Node *n;
-    switch (token->type) {
-    case TOK_IDENTIFIER:
-        n = nodeVar(token->data.text);
-        break;
-    case TOK_INT_LITERAL:
-        n = nodeLitInt(token->data.num_int_val);
-        break;
-    case TOK_DOUBLE_LITERAL:
-        n = nodeLitDouble(token->data.num_float_val);
-        break;
-    case TOK_STRING_LITERAL:
-        n = nodeLitString(token->data.text);
-        break;
-    default:
-        return NULL;
-    }
-    nodeSetPos(n, token->line, token->column);
-    return n;
-}
-
 static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols, NodeStack *nodes,
                                        ParseError *error) {
     if (precedenceStackPush(symbols, PREC_END) != EXIT_SUCCESS) {
@@ -228,8 +205,7 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
 
             break;
         case REL_REDUCE: {
-            ErrorCode rc =
-                handleReduce(symbols, nodes, error, &parser->current, lparen);
+            ErrorCode rc = handleReduce(symbols, nodes, error, &parser->current, lparen);
             if (rc != ERR_OK) {
                 return rc;
             }

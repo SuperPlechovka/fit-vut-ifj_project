@@ -1,8 +1,8 @@
 #ifndef NODE_STACK_H
 #define NODE_STACK_H
 
-#include <stdbool.h>
 #include "../tmp/ast.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct {

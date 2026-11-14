@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "../tmp/ast.h"
 #include "error.h"
 #include "lexer.h"
 #include "token.h"
@@ -29,5 +30,11 @@ ErrorCode setParserError(ParseError *error, ErrorCode code, const Token *at, con
 ErrorCode setParserErrorAt(ParseError *error, ErrorCode code, size_t line, size_t column,
                            const char *message);
 ErrorCode parserAdvance(Parser *parser, ParseError *error);
+// Creates AST leaf node from token operand. Returns NULL if alocation fails.
+Node *nodeFromToken(const Token *token);
+
+// not a part of the actual API, but unit tests need to see them
+ErrorCode parseTypeOpt(Parser *parser, ParseError *error, TypeKind *out);
+ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result);
 
 #endif

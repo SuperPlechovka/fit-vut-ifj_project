@@ -46,16 +46,14 @@ void precedenceStackDestroy(PrecedenceStack *stack);
 PrecedenceSymbol tokenToPrecSymbol(TokenType kind);
 
 typedef enum {
-  REL_ERROR,
-  REL_SHIFT,
-  REL_REDUCE,
-  REL_EQUAL,
+    REL_ERROR,
+    REL_SHIFT,
+    REL_REDUCE,
+    REL_EQUAL,
 } PrecedenceRelation;
 
-PrecedenceRelation getPrecedenceRelation(
-  PrecedenceSymbol stackSymbol,
-  PrecedenceSymbol inputSymbol
-);
+PrecedenceRelation getPrecedenceRelation(PrecedenceSymbol stackSymbol,
+                                         PrecedenceSymbol inputSymbol);
 
 int stackTopTerminal(const PrecedenceStack *stack, PrecedenceSymbol *result);
 

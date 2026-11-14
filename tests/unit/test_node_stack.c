@@ -9,7 +9,7 @@
  * - LIFO pořadí a peek, který nemění velikost;
  * - pop vrátí uzel a vynuluje jeho slot (destroy ho pak neuvolní);
  * - růst kapacity při překročení počáteční velikosti;
- * - destroy uvolní uzly, které na zásobníku zůstaly (ověřitelné ASan).
+ * - destroy uvolní uzly, které na zásobníku zůstaly (ověřitelné ASan (kontrola práce s pamětí)).
  * Model: Claude Opus 5.5, Claude Code.
  */
 #include "../../src/node_stack.h"
