@@ -43,6 +43,7 @@ Node *nodeLitInt(long long v)
   return n;
 }
 
+
 Node *nodeLitDouble(double v)
 {
   Node *n = nodeNew(N_LIT_DOUBLE);
@@ -238,7 +239,15 @@ void nodeSetPos(Node *n, int line, int col)
     n->col = col;
   }
 }
-
+Node *nodeLitUnit(void)
+{
+  Node *n = nodeNew(N_LIT_UNIT);
+  if (n == NULL) {
+    return NULL;
+  }
+  n->type = TY_UNIT;
+  return n;
+}
 void nodeAppend(Node **list, Node *node)
 {
   if (list == NULL || node == NULL) {

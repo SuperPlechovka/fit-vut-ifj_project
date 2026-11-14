@@ -8,6 +8,7 @@ typedef enum {
   N_LIT_INT,
   N_LIT_DOUBLE,
   N_LIT_STRING,
+  N_LIT_UNIT,
   N_VAR,
   N_BINARY,
   N_UNARY,
@@ -102,6 +103,7 @@ Node *nodeNew(NodeKind kind);
 void  nodeFree(Node *n);
 
 Node *nodeLitInt(long long v);
+Node *nodeLitUInt(unsigned long long v);
 Node *nodeLitDouble(double v);
 Node *nodeLitString(const char *s);
 Node *nodeVar(const char *name);
@@ -117,6 +119,7 @@ Node *nodeReturn(Node *expr);
 Node *nodeIf(Node *cond, Node *then_body, Node *else_body);
 Node *nodeWhile(Node *cond, Node *body);
 
+Node *nodeLitUnit(void);
 Node *nodeFunc(const char *name, int is_main, TypeKind ret, Node *body);
 Node *nodeProgram(Node *funcs);
 
