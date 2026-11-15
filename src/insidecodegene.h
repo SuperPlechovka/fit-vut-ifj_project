@@ -7,8 +7,8 @@
  * @author Vojtěch Matěj (xmatejv00)
  */
 
-#ifndef CODEGEN_H
-#define CODEGEN_H
+#ifndef INSIDECODEGENE_H
+#define INSIDECODEGENE_H
 
 #include "ast.h"
 #include "ilist.h"
@@ -25,4 +25,4 @@
  */
 int codegenProgram(Node *prog, ListOfInstr *out);
 
-#endif /* CODEGEN_H */
+#endif /* INSIDECODEGENE_H */

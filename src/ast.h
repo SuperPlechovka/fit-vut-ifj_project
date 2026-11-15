@@ -20,6 +20,9 @@ typedef enum {
     N_RETURN,
     N_IF,
     N_WHILE,
+    /* parametr funkce */
+    N_PARAM,
+
     /* celý program */
     N_PROGRAM,
     N_FUNC
@@ -50,6 +53,7 @@ typedef enum { TY_UNKNOWN, TY_INT, TY_DOUBLE, TY_STRING, TY_UNIT, TY_BOOL } Type
  * Význam polí podle druhu uzlu (kind):
  *   N_LIT_INT, N_LIT_DOUBLE   ival / dval
  *   N_LIT_STRING              name (text literálu bez uvozovek)
+ *   N_LIT_UNIT                nic (literál (), typ TY_UNIT)
  *   N_VAR                     name
  *   N_BINARY                  op, left, right
  *   N_UNARY                   op (OP_NEG), left
@@ -61,6 +65,7 @@ typedef enum { TY_UNKNOWN, TY_INT, TY_DOUBLE, TY_STRING, TY_UNIT, TY_BOOL } Type
  *   N_RETURN                  left (výraz, nebo NULL)
  *   N_IF                      left (podmínka), body (THEN větev), right (ELSE větev nebo NULL)
  *   N_WHILE                   left (podmínka), body (tělo cyklu)
+ *   N_PARAM                   name, type (typ parametru z hlavičky)
  *   N_FUNC                    name, is_main, type (návratový typ),
  *                             args (seznam parametrů přes next),
  *                             body (seznam příkazů přes next)
@@ -128,5 +133,5 @@ Node *nodeProgram(Node *funcs);
 
 void nodeSetPos(Node *n, int line, int col);
 void nodeAppend(Node **list, Node *node);
-
+Node *nodeParam(const char *name, TypeKind type);
 #endif

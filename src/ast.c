@@ -254,3 +254,16 @@ void nodeAppend(Node **list, Node *node) {
     }
     current->next = node;
 }
+Node *nodeParam(const char *name, TypeKind type) {
+    Node *n = nodeNew(N_PARAM);
+    if (n == NULL) {
+        return NULL;
+    }
+    n->name = dupName(name);
+    if (n->name == NULL) {
+        free(n);
+        return NULL;
+    }
+    n->type = type;
+    return n;
+}

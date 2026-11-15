@@ -68,8 +68,8 @@ static void testFunctionCallWithParams(void) {
     Node *funcs = NULL;
 
     /* func add(a: Int, b: Int) : Int { return a + b } */
-    Node *param_a = nodeDecl("a", 0, TY_INT, NULL);
-    Node *param_b = nodeDecl("b", 0, TY_INT, NULL);
+    Node *param_a = nodeParam("a", TY_INT);
+    Node *param_b = nodeParam("b", TY_INT);
     nodeAppend(&param_a, param_b);
 
     Node *add_expr = nodeBinary(OP_ADD, nodeVar("a"), nodeVar("b"));
