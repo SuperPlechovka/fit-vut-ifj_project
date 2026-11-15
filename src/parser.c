@@ -330,6 +330,10 @@ static ErrorCode parseVarDef(Parser *parser, ParseError *error, Node **result) {
 }
 
 ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result) {
+    // 32. <simple_stmt>     -> <var_def>
+    // 33. <simple_stmt>     -> <return>
+    // 34. <simple_stmt>     -> id = <expr_or_call>            // LL(2): id a za ním =
+    // 35. <simple_stmt>     -> <expr_or_call>
     if (parser == NULL || error == NULL || result == NULL) {
         return setParserError(error, ERR_INTERNAL, NULL, "invalid parseSimpleStatement arguments");
     }
@@ -342,7 +346,6 @@ ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result)
     }
 
     if (isTokenTypeEqual(parser, TOK_KW_RETURN)) {
-        // return
         return parseReturn(parser, error, result);
     }
 
@@ -375,4 +378,188 @@ ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result)
     }
 
     return parseExprOrCall(parser, error, result);
+}
+
+static ErrorCode parseWhile(Parser *parser, ParseError *error, Node **result) {
+    // 43. <while>           -> while expr do <block>
+    *result = NULL;
+    size_t line = parser->current.line, column = parser->current.column;
+    Node *whileNode = nodeWhile(NULL, NULL);
+
+    if (whileNode == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    ErrorCode code = expect(parser, TOK_KW_WHILE, error);
+
+    if (code == ERR_OK) {
+        code = parseExpression(parser, error, &whileNode->left);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_KW_DO, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseBlock(parser, error, &whileNode->body);
+    }
+
+    if (code != ERR_OK) {
+        *result = NULL;
+        nodeFree(whileNode);
+        return code;
+    }
+
+    nodeSetPos(whileNode, (int)line, (int)column);
+
+    *result = whileNode;
+    return code;
+}
+
+static ErrorCode parseIf(Parser *parser, ParseError *error, Node **result) {
+    // 42. <if> -> if expr then <block> else <block>
+    *result = NULL;
+    size_t line = parser->current.line, column = parser->current.column;
+    Node *ifNode = nodeIf(NULL, NULL, NULL);
+
+    if (ifNode == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    ErrorCode code = expect(parser, TOK_KW_IF, error);
+
+    if (code == ERR_OK) {
+        code = parseExpression(parser, error, &ifNode->left);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_KW_THEN, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseBlock(parser, error, &ifNode->body);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_KW_ELSE, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseBlock(parser, error, &ifNode->right);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(ifNode);
+        return code;
+    }
+
+    nodeSetPos(ifNode, (int)line, (int)column);
+
+    *result = ifNode;
+    return code;
+}
+
+static ErrorCode parseStatementSeparator(Parser *parser, ParseError *error) {
+    // rule 30
+    if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        return parserAdvance(parser, error);
+    }
+
+    // rule 31
+    if (isTokenTypeEqual(parser, TOK_SEMICOLON)) {
+        ErrorCode code = parserAdvance(parser, error);
+
+        if (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
+            code = parserAdvance(parser, error);
+        }
+        return code;
+    }
+
+    if (isTokenTypeEqual(parser, TOK_DEDENT)) {
+        return ERR_OK;
+    }
+
+    return setParserError(error, ERR_SYNTAX, &parser->current, "expected newline or ;");
+}
+
+static ErrorCode parseStatement(Parser *parser, ParseError *error, Node **result) {
+    // 27. <statement>       -> <simple_stmt> <stmt_sep>
+    // 28. <statement>       -> <if>
+    // 29. <statement>       -> <while>
+    *result = NULL;
+
+    if (isTokenTypeEqual(parser, TOK_KW_IF)) {
+        // 28
+        return parseIf(parser, error, result);
+    }
+
+    if (isTokenTypeEqual(parser, TOK_KW_WHILE)) {
+        // 29
+        return parseWhile(parser, error, result);
+    }
+
+    ErrorCode code = parseSimpleStatement(parser, error, result);
+
+    if (code == ERR_OK) {
+        code = parseStatementSeparator(parser, error);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(*result);
+        *result = NULL;
+    }
+
+    return code;
+}
+
+static ErrorCode parseStatements(Parser *parser, ParseError *error, Node **result) {
+    // 24. <statements>      -> <statement> <statements_tail>
+    // 25. <statements_tail> -> <statement> <statements_tail>
+    // 26. <statements_tail> -> eps
+    *result = NULL;
+
+    do {
+        Node *statement = NULL;
+
+        ErrorCode code = parseStatement(parser, error, &statement);
+
+        if (code != ERR_OK) {
+            nodeFree(*result);
+            *result = NULL;
+            return code;
+        }
+
+        nodeAppend(result, statement);
+
+    } while (!isTokenTypeEqual(parser, TOK_DEDENT));
+
+    return ERR_OK;
+}
+
+ErrorCode parseBlock(Parser *parser, ParseError *error, Node **result) {
+    if (parser == NULL || error == NULL || result == NULL) {
+        return setParserError(error, ERR_INTERNAL, NULL, "invalid parseBlock arguments");
+    }
+
+    *result = NULL;
+
+    ErrorCode code = expect(parser, TOK_NEWLINE, error);
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_INDENT, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseStatements(parser, error, result);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_DEDENT, error);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(*result);
+        *result = NULL;
+    }
+
+    return code;
 }

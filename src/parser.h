@@ -36,5 +36,6 @@ Node *nodeFromToken(const Token *token);
 // not a part of the actual API, but unit tests need to see them
 ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result);
 ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result);
+ErrorCode parseBlock(Parser *parser, ParseError *error, Node **result);
 
 #endif
