@@ -16,7 +16,7 @@
 /**
  * @brief Vygeneruje posloupnost instrukcí IFJcode26 pro celý program.
  * @details Prochází kořenový uzel AST (N_PROGRAM) a všechny jeho podstromy (funkce,
- *          deklarace, příkazy, výrazy). Generované instrukce postupně zapisuje 
+ *          deklarace, příkazy, výrazy). Generované instrukce postupně zapisuje
  *          do předaného instrukčního seznamu.
  *
  * @param prog Ukazatel na kořenový uzel AST reprezentující celý program.

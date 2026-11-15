@@ -4,43 +4,45 @@
 #include <stddef.h>
 
 typedef enum {
-  /* výrazy */
-  N_LIT_INT,
-  N_LIT_DOUBLE,
-  N_LIT_STRING,
-  N_LIT_UNIT,
-  N_VAR,
-  N_BINARY,
-  N_UNARY,
-  N_CALL,
-  /* příkazy */
-  N_DECL,
-  N_ASSIGN,
-  N_WRITE,
-  N_RETURN,
-  N_IF,
-  N_WHILE,
-  /* celý program */
-  N_PROGRAM,
-  N_FUNC
+    /* výrazy */
+    N_LIT_INT,
+    N_LIT_DOUBLE,
+    N_LIT_STRING,
+    N_LIT_UNIT,
+    N_VAR,
+    N_BINARY,
+    N_UNARY,
+    N_CALL,
+    /* příkazy */
+    N_DECL,
+    N_ASSIGN,
+    N_WRITE,
+    N_RETURN,
+    N_IF,
+    N_WHILE,
+    /* celý program */
+    N_PROGRAM,
+    N_FUNC
 } NodeKind;
 
 typedef enum {
-  OP_NONE,
-  OP_ADD, OP_SUB, OP_MUL, OP_DIV,
-  OP_LT, OP_LE, OP_GT, OP_GE, OP_EQ, OP_NE,
-  OP_NEG,
-  OP_AND, OP_OR
+    OP_NONE,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    OP_LT,
+    OP_LE,
+    OP_GT,
+    OP_GE,
+    OP_EQ,
+    OP_NE,
+    OP_NEG,
+    OP_AND,
+    OP_OR
 } OpKind;
 
-typedef enum {
-  TY_UNKNOWN,
-  TY_INT,
-  TY_DOUBLE,
-  TY_STRING,
-  TY_UNIT,
-  TY_BOOL
-} TypeKind;
+typedef enum { TY_UNKNOWN, TY_INT, TY_DOUBLE, TY_STRING, TY_UNIT, TY_BOOL } TypeKind;
 
 /*
  * Uzel abstraktního syntaktického stromu.
@@ -68,39 +70,40 @@ typedef enum {
  * (příkazy, argumenty, parametry, funkce).
  */
 typedef struct Node {
-  NodeKind  kind;
+    NodeKind kind;
 
-  /* operátor: u N_BINARY a N_UNARY, jinak OP_NONE */
-  OpKind    op;
+    /* operátor: u N_BINARY a N_UNARY, jinak OP_NONE */
+    OpKind op;
 
-  /* typ: u výrazů výsledný typ, u N_DECL deklarovaný typ, u N_FUNC návratový typ */
-  TypeKind  type;
+    /* typ: u výrazů výsledný typ, u N_DECL deklarovaný typ, u N_FUNC návratový typ */
+    TypeKind type;
 
-  /* hodnoty literálů a jména */
-  char     *name;       /* identifikátor, text literálu, jméno funkce */
-  long long ival;       /* hodnota N_LIT_INT */
-  double    dval;       /* hodnota N_LIT_DOUBLE */
+    /* hodnoty literálů a jména */
+    char *name;     /* identifikátor, text literálu, jméno funkce */
+    long long ival; /* hodnota N_LIT_INT */
+    double dval;    /* hodnota N_LIT_DOUBLE */
 
-  /* příznaky */
-  int       is_var;     /* N_DECL: 1 = var, 0 = val */
-  int       is_main;    /* N_FUNC: 1 = funkce s anotací @main */
+    /* příznaky */
+    int is_var;  /* N_DECL: 1 = var, 0 = val */
+    int is_main; /* N_FUNC: 1 = funkce s anotací @main */
 
-  /* poloha ve zdrojovém souboru */
-  int       line;       /* řádek, od 1 */
-  int       col;        /* sloupec, od 1 */
+    /* poloha ve zdrojovém souboru */
+    int line; /* řádek, od 1 */
+    int col;  /* sloupec, od 1 */
 
-  /* potomci */
-  struct Node *left;    /* první operand, výraz, inicializace nebo podmínka */
-  struct Node *right;   /* druhý operand (N_BINARY) nebo ELSE větev (N_IF) */
-  struct Node *args;    /* argumenty volání (N_CALL) nebo parametry (N_FUNC) */
-  struct Node *body;    /* příkazy (N_FUNC, THEN větev u N_IF, tělo N_WHILE) nebo funkce (N_PROGRAM) */
+    /* potomci */
+    struct Node *left;  /* první operand, výraz, inicializace nebo podmínka */
+    struct Node *right; /* druhý operand (N_BINARY) nebo ELSE větev (N_IF) */
+    struct Node *args;  /* argumenty volání (N_CALL) nebo parametry (N_FUNC) */
+    struct Node
+        *body; /* příkazy (N_FUNC, THEN větev u N_IF, tělo N_WHILE) nebo funkce (N_PROGRAM) */
 
-  /* sourozenec v seznamu příkazů, argumentů nebo funkcí */
-  struct Node *next;
+    /* sourozenec v seznamu příkazů, argumentů nebo funkcí */
+    struct Node *next;
 } Node;
 
 Node *nodeNew(NodeKind kind);
-void  nodeFree(Node *n);
+void nodeFree(Node *n);
 
 Node *nodeLitInt(long long v);
 Node *nodeLitUInt(unsigned long long v);
