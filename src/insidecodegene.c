@@ -48,7 +48,7 @@ static void appendList(ListOfInstr *dst, ListOfInstr *src) {
     src->last = NULL;
 }
 
-static Operand tmpOp(Gen *g, int idx) {
+static Operand tmpOp(const Gen *g, int idx) {
     char buf[32];
     snprintf(buf, sizeof buf, "$t%d", idx);
     return opVar(g->frame, buf);
