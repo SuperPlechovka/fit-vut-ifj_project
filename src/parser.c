@@ -133,26 +133,36 @@ static ErrorCode parseTypeOpt(Parser *parser, ParseError *error, TypeKind *out) 
     return parseType(parser, error, out);
 }
 
+static SourcePos currentPos(const Parser *parser) {
+    return (SourcePos){parser->current.line, parser->current.column};
+}
+
+static void setNodePos(Node *node, SourcePos pos) {
+    nodeSetPos(node, (int)pos.line, (int)pos.column);
+}
+
 // Creates AST leaf node from token operand. Returns NULL if alocation fails.
-Node *nodeFromToken(const Token *token) {
+Node *nodeFromToken(const Parser *parser) {
     Node *n;
-    switch (token->type) {
+
+    switch (parser->current.type) {
     case TOK_IDENTIFIER:
-        n = nodeVar(token->data.text);
+        n = nodeVar(parser->current.data.text);
         break;
     case TOK_INT_LITERAL:
-        n = nodeLitInt(token->data.num_int_val);
+        n = nodeLitInt(parser->current.data.num_int_val);
         break;
     case TOK_DOUBLE_LITERAL:
-        n = nodeLitDouble(token->data.num_float_val);
+        n = nodeLitDouble(parser->current.data.num_float_val);
         break;
     case TOK_STRING_LITERAL:
-        n = nodeLitString(token->data.text);
+        n = nodeLitString(parser->current.data.text);
         break;
     default:
         return NULL;
     }
-    nodeSetPos(n, token->line, token->column);
+
+    setNodePos(n, currentPos(parser));
     return n;
 }
 
@@ -166,7 +176,7 @@ static ErrorCode parseTerm(Parser *parser, ParseError *error, Node **out) {
         return setParserError(error, ERR_SYNTAX, &parser->current, "expected term");
     }
 
-    *out = nodeFromToken(&parser->current);
+    *out = nodeFromToken(parser);
     if (*out == NULL) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
     }
@@ -174,18 +184,24 @@ static ErrorCode parseTerm(Parser *parser, ParseError *error, Node **out) {
     return parserAdvance(parser, error);
 }
 
-static ErrorCode parseArgs(Parser *parser, ParseError *error, Node **args) {
+typedef ErrorCode (*ItemParser)(Parser *parser, ParseError *error, Node **out);
+
+static ErrorCode parseCommaList(Parser *parser, ParseError *error, ItemParser parseItem,
+                                Node **list) {
+    *list = NULL;
+
     if (isTokenTypeEqual(parser, TOK_RPAREN)) {
         return ERR_OK;
     }
 
     while (true) {
-        Node *arg = NULL;
-        ErrorCode code = parseTerm(parser, error, &arg);
+        Node *item = NULL;
+        ErrorCode code = parseItem(parser, error, &item);
         if (code != ERR_OK) {
             return code;
         }
-        nodeAppend(args, arg);
+
+        nodeAppend(list, item);
 
         if (!isTokenTypeEqual(parser, TOK_COMMA)) {
             return ERR_OK;
@@ -199,6 +215,14 @@ static ErrorCode parseArgs(Parser *parser, ParseError *error, Node **args) {
     }
 }
 
+static ErrorCode parseArgs(Parser *parser, ParseError *error, Node **args) {
+    // 47. <args>            -> <term> <args_tail>
+    // 48. <args>            -> eps
+    // 49. <args_tail>       -> , <term> <args_tail>
+    // 50. <args_tail>       -> eps
+    return parseCommaList(parser, error, parseTerm, args);
+}
+
 static ErrorCode parseCall(Parser *parser, ParseError *error, Node **result) {
     Node *call = nodeCall(parser->current.data.text, NULL);
 
@@ -206,7 +230,7 @@ static ErrorCode parseCall(Parser *parser, ParseError *error, Node **result) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "failed to create call node");
     }
 
-    nodeSetPos(call, (int)parser->current.line, (int)parser->current.column);
+    setNodePos(call, currentPos(parser));
 
     ErrorCode code = parserAdvance(parser, error);
     if (code == ERR_OK) {
@@ -245,7 +269,7 @@ ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result) {
 }
 
 static ErrorCode parseReturn(Parser *parser, ParseError *error, Node **result) {
-    size_t line = parser->current.line, column = parser->current.column;
+    SourcePos pos = currentPos(parser);
 
     ErrorCode code = expect(parser, TOK_KW_RETURN, error);
 
@@ -264,7 +288,7 @@ static ErrorCode parseReturn(Parser *parser, ParseError *error, Node **result) {
             return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
         }
 
-        nodeSetPos(ret, (int)line, (int)column);
+        setNodePos(ret, pos);
         *result = ret;
 
         return ERR_OK;
@@ -282,14 +306,14 @@ static ErrorCode parseReturn(Parser *parser, ParseError *error, Node **result) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
     }
 
-    nodeSetPos(ret, (int)line, (int)column);
+    setNodePos(ret, pos);
     *result = ret;
     return ERR_OK;
 }
 
 static ErrorCode parseVarDef(Parser *parser, ParseError *error, Node **result) {
     int is_var = isTokenTypeEqual(parser, TOK_KW_VAR);
-    size_t line = parser->current.line, column = parser->current.column;
+    SourcePos pos = currentPos(parser);
 
     ErrorCode code = parserAdvance(parser, error);
     if (code != ERR_OK) {
@@ -305,7 +329,7 @@ static ErrorCode parseVarDef(Parser *parser, ParseError *error, Node **result) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
     }
 
-    nodeSetPos(decl, (int)line, (int)column);
+    setNodePos(decl, pos);
 
     code = parserAdvance(parser, error);
     if (code == ERR_OK) {
@@ -357,7 +381,8 @@ ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result)
         if (assign == NULL) {
             return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
         }
-        nodeSetPos(assign, (int)parser->current.line, (int)parser->current.column);
+
+        setNodePos(assign, currentPos(parser));
 
         ErrorCode code = parserAdvance(parser, error);
         if (code == ERR_OK) {
@@ -383,7 +408,7 @@ ErrorCode parseSimpleStatement(Parser *parser, ParseError *error, Node **result)
 static ErrorCode parseWhile(Parser *parser, ParseError *error, Node **result) {
     // 43. <while>           -> while expr do <block>
     *result = NULL;
-    size_t line = parser->current.line, column = parser->current.column;
+    SourcePos pos = currentPos(parser);
     Node *whileNode = nodeWhile(NULL, NULL);
 
     if (whileNode == NULL) {
@@ -410,7 +435,7 @@ static ErrorCode parseWhile(Parser *parser, ParseError *error, Node **result) {
         return code;
     }
 
-    nodeSetPos(whileNode, (int)line, (int)column);
+    setNodePos(whileNode, pos);
 
     *result = whileNode;
     return code;
@@ -419,7 +444,7 @@ static ErrorCode parseWhile(Parser *parser, ParseError *error, Node **result) {
 static ErrorCode parseIf(Parser *parser, ParseError *error, Node **result) {
     // 42. <if> -> if expr then <block> else <block>
     *result = NULL;
-    size_t line = parser->current.line, column = parser->current.column;
+    SourcePos pos = currentPos(parser);
     Node *ifNode = nodeIf(NULL, NULL, NULL);
 
     if (ifNode == NULL) {
@@ -453,19 +478,20 @@ static ErrorCode parseIf(Parser *parser, ParseError *error, Node **result) {
         return code;
     }
 
-    nodeSetPos(ifNode, (int)line, (int)column);
+    setNodePos(ifNode, pos);
 
     *result = ifNode;
     return code;
 }
 
 static ErrorCode parseStatementSeparator(Parser *parser, ParseError *error) {
-    // rule 30
+    // 30. <stmt_sep>        -> NEWLINE
+    // 31. <stmt_sep>        -> ; <nl_opt>
+
     if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
         return parserAdvance(parser, error);
     }
 
-    // rule 31
     if (isTokenTypeEqual(parser, TOK_SEMICOLON)) {
         ErrorCode code = parserAdvance(parser, error);
 
@@ -562,4 +588,279 @@ ErrorCode parseBlock(Parser *parser, ParseError *error, Node **result) {
     }
 
     return code;
+}
+
+static ErrorCode parseParam(Parser *parser, ParseError *error, Node **out) {
+    // 16. <param>           -> id : <type>
+    SourcePos pos = currentPos(parser);
+
+    *out = NULL;
+
+    if (!isTokenTypeEqual(parser, TOK_IDENTIFIER)) {
+        return setParserError(error, ERR_SYNTAX, &parser->current, "expected parameter name");
+    }
+
+    Node *param = nodeParam(parser->current.data.text, TY_UNKNOWN);
+    if (param == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    ErrorCode code = parserAdvance(parser, error);
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_COLON, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseType(parser, error, &param->type);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(param);
+        return code;
+    }
+
+    setNodePos(param, pos);
+
+    *out = param;
+    return code;
+}
+
+static ErrorCode parseParams(Parser *parser, ParseError *error, Node **params) {
+    // 12. <params>          -> <param> <params_tail>
+    // 13. <params>          -> eps
+    // 14. <params_tail>     -> , <param> <params_tail>
+    // 15. <params_tail>     -> eps
+    return parseCommaList(parser, error, parseParam, params);
+}
+
+static ErrorCode parseBody(Parser *parser, ParseError *error, Node **result) {
+    // 10. <func_body>       -> <expr_or_call> NEWLINE         // jednořádková funkce
+    // 11. <func_body>       -> <block>                        // víceřádková funkce
+    *result = NULL;
+
+    // 11
+    if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        return parseBlock(parser, error, result);
+    }
+
+    // 10
+    ErrorCode code = parseExprOrCall(parser, error, result);
+
+    if (code == ERR_OK) {
+        if (isTokenTypeEqual(parser, TOK_EOF)) {
+            return ERR_OK;
+        }
+        code = expect(parser, TOK_NEWLINE, error);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(*result);
+        *result = NULL;
+    }
+
+    return code;
+}
+
+static ErrorCode parseNewlineOptional(Parser *parser, ParseError *error) {
+    //  8. <nl_opt>          -> NEWLINE
+    //  9. <nl_opt>          -> eps
+    if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        return parserAdvance(parser, error);
+    }
+
+    return ERR_OK;
+}
+
+static ErrorCode parseMain(Parser *parser, ParseError *error, bool *isMain) {
+    //  6. <main_opt>        -> @ id <nl_opt>                  // id musí být "main", jinak chyba 2
+    //  7. <main_opt>        -> eps
+    *isMain = false;
+
+    if (!isTokenTypeEqual(parser, TOK_AT)) {
+        return ERR_OK;
+    }
+
+    ErrorCode code = parserAdvance(parser, error);
+
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    if (!isTokenTypeEqual(parser, TOK_IDENTIFIER) ||
+        (strcmp(parser->current.data.text, "main") != 0)) {
+        return setParserError(error, ERR_SYNTAX, &parser->current, "expected id main");
+    }
+
+    *isMain = true;
+
+    code = parserAdvance(parser, error);
+
+    if (code == ERR_OK) {
+        code = parseNewlineOptional(parser, error);
+    }
+
+    // //-------------------------------------------------
+    // if (code == ERR_OK) {
+    //     if (!isTokenTypeEqual(parser, TOK_IDENTIFIER) ||
+    //         (strcmp(parser->current.data.text, "main") != 0)) {
+    //         return setParserError(error, ERR_SYNTAX, &parser->current, "expected id main");
+    //     }
+    //
+    //     *isMain = true;
+    //
+    //     code = parserAdvance(parser, error);
+    //
+    //     if (code == ERR_OK) {
+    //         code = parseNewlineOptional(parser, error);
+    //     }
+    // }
+
+    return code;
+}
+
+static ErrorCode parseFunctionDefinition(Parser *parser, ParseError *error, Node **result) {
+    //  5. <func_def>        -> <main_opt> def id ( <params> ) <type_opt> = <func_body>
+    *result = NULL;
+    bool isMain;
+
+    ErrorCode code = parseMain(parser, error, &isMain);
+
+    // pos of keyword def
+    SourcePos pos = currentPos(parser);
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_KW_DEF, error);
+    }
+
+    Node *func = NULL;
+
+    if (code == ERR_OK) {
+        if (!isTokenTypeEqual(parser, TOK_IDENTIFIER)) {
+            return setParserError(error, ERR_SYNTAX, &parser->current, "expected function name");
+        }
+
+        func = nodeFunc(parser->current.data.text, isMain, TY_UNKNOWN, NULL);
+        if (func == NULL) {
+            return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+        }
+
+        code = parserAdvance(parser, error);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_LPAREN, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseParams(parser, error, &func->args);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_RPAREN, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseTypeOpt(parser, error, &func->type);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_ASSIGN, error);
+    }
+
+    if (code == ERR_OK) {
+        code = parseBody(parser, error, &func->body);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(func);
+        *result = NULL;
+        return code;
+    }
+
+    setNodePos(func, pos);
+    *result = func;
+    return code;
+}
+
+static ErrorCode parseFunctions(Parser *parser, ParseError *error, Node **result) {
+    //  3. <funcs>           -> <func_def> <funcs>
+    //  4. <funcs>           -> eps
+    *result = NULL;
+
+    while (isTokenTypeEqual(parser, TOK_AT) || isTokenTypeEqual(parser, TOK_KW_DEF)) {
+        Node *funcDef = NULL;
+        ErrorCode code = parseFunctionDefinition(parser, error, &funcDef);
+
+        if (code != ERR_OK) {
+            return code;
+        }
+        nodeAppend(result, funcDef);
+    }
+
+    return ERR_OK;
+}
+
+static ErrorCode parseProlog(Parser *parser, ParseError *error) {
+    //  2. <prolog>          -> import id . * NEWLINE          // id musí být "ifj26", jinak chyba 2
+    ErrorCode code = expect(parser, TOK_KW_IMPORT, error);
+
+    if (code == ERR_OK) {
+        if (!isTokenTypeEqual(parser, TOK_IDENTIFIER) ||
+            (strcmp(parser->current.data.text, "ifj26") != 0)) {
+            return setParserError(error, ERR_SYNTAX, &parser->current, "expected identifier ifj26");
+        }
+
+        code = parserAdvance(parser, error);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_DOT, error);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_STAR, error);
+    }
+
+    if (code == ERR_OK) {
+        code = expect(parser, TOK_NEWLINE, error);
+    }
+
+    return code;
+}
+
+ErrorCode parseProgram(Parser *parser, ParseError *error, Node **result) {
+    //  1. <program>         -> <prolog> <funcs> EOF
+    if (parser == NULL || error == NULL || result == NULL) {
+        return setParserError(error, ERR_INTERNAL, NULL, "invalid parseProgram arguments");
+    }
+
+    SourcePos pos = currentPos(parser);
+
+    *result = NULL;
+
+    Node *program = nodeProgram(NULL);
+
+    if (program == NULL) {
+        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
+    }
+
+    ErrorCode code = parseProlog(parser, error);
+
+    if (code == ERR_OK) {
+        code = parseFunctions(parser, error, &program->body);
+    }
+
+    if (code == ERR_OK && !isTokenTypeEqual(parser, TOK_EOF)) {
+        code = setParserError(error, ERR_SYNTAX, &parser->current, "expected function definition");
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(program);
+        *result = NULL;
+        return code;
+    }
+
+    setNodePos(program, pos);
+    *result = program;
+    return ERR_OK;
 }

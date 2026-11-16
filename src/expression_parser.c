@@ -185,7 +185,7 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
             }
 
             if (input == PREC_OPERAND) {
-                Node *leaf = nodeFromToken(&parser->current);
+                Node *leaf = nodeFromToken(parser);
                 if (leaf == NULL || nodeStackPush(nodes, leaf) != EXIT_SUCCESS) {
                     nodeFree(leaf);
                     return setParserError(error, ERR_INTERNAL, NULL,
