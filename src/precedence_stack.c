@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #include "precedence_stack.h"
 #include <stdlib.h>
 #include <string.h>

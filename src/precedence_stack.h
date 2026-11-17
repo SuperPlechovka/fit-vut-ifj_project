@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #ifndef TOK_STACK_H
 #define TOK_STACK_H
 

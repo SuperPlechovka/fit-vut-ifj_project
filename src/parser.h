@@ -1,7 +1,11 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "../tmp/ast.h"
+#include "ast.h"
 #include "error.h"
 #include "lexer.h"
 #include "token.h"

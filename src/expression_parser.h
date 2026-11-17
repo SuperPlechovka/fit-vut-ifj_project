@@ -1,7 +1,11 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #ifndef EXPRESSION_PARSER_H
 #define EXPRESSION_PARSER_H
 
-#include "../tmp/ast.h"
+#include "ast.h"
 #include "error.h"
 #include "parser.h"
 #include <stddef.h>

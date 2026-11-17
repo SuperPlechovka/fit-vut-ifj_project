@@ -1,4 +1,8 @@
-#include "../tmp/ast.h"
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
+#include "ast.h"
 #include <node_stack.h>
 #include <stdlib.h>
 

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #include "parser.h"
 #include "expression_parser.h"
 #include <stdbool.h>

@@ -1,7 +1,11 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #ifndef NODE_STACK_H
 #define NODE_STACK_H
 
-#include "../tmp/ast.h"
+#include "ast.h"
 #include <stdbool.h>
 #include <stddef.h>
 

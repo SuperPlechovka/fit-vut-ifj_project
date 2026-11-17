@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @author Frantisek Fiala (xfialaf00@vutbr.cz)
+ */
 #ifndef ERROR_H
 #define ERROR_H
 
