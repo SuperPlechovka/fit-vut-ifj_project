@@ -6,10 +6,10 @@
 |---|---|
 | `id` | `TOK_IDENTIFIER` |
 | `int_lit`, `double_lit`, `string_lit` | `TOK_INT_LITERAL`, `TOK_DOUBLE_LITERAL`, `TOK_STRING_LITERAL` |
-| `import def val var if then else while do return` | `TOK_KW_*` |
-| `Int Double String Unit` | `TOK_KW_INT`, `TOK_KW_DOUBLE`, `TOK_KW_STRING`, `TOK_KW_UNIT` |
-| `( ) , : ; . * = @` | `TOK_LPAREN`, `TOK_RPAREN`, `TOK_COMMA`, `TOK_COLON`, `TOK_SEMICOLON`, `TOK_DOT`, `TOK_STAR`, `TOK_ASSIGN`, `TOK_AT` |
-| `NEWLINE INDENT DEDENT EOF` | `TOK_NEWLINE`, `TOK_INDENT`, `TOK_DEDENT`, `TOK_EOF` |
+| `import` `def` `val` `var` `if` `then` `else` `while` `do` `return` | `TOK_KW_*` |
+| `Int` `Double` `String` `Unit` | `TOK_KW_INT`, `TOK_KW_DOUBLE`, `TOK_KW_STRING`, `TOK_KW_UNIT` |
+| `(` `)` `,` `:` `;` `.` `*` `=` `@` | `TOK_LPAREN`, `TOK_RPAREN`, `TOK_COMMA`, `TOK_COLON`, `TOK_SEMICOLON`, `TOK_DOT`, `TOK_STAR`, `TOK_ASSIGN`, `TOK_AT` |
+| `NEWLINE` `INDENT` `DEDENT` `EOF` | `TOK_NEWLINE`, `TOK_INDENT`, `TOK_DEDENT`, `TOK_EOF` |
 | `expr` | výraz, zpracuje ho precedenční analýza (`parseExpression`); patří sem i literál `()` |
 | `eps` | prázdný řetězec |
 
