@@ -27,7 +27,7 @@ typedef struct lexer {
     size_t pending_dedents;   /**< Počet čekajících tokenů DEDENT. */
     int at_line_start;        /**< Příznak začátku řádku. */
     int eof_emitted;          /**< Příznak vydaného tokenu EOF. */
-    size_t parenthesis_depth; /**< Hloubka zanoření závorek, zatím nepoužitá. */
+    size_t parenthesis_depth; /**< Hloubka závorek pro potlačení nových řádků a odsazení. */
 } Lexer;
 
 /** @brief Inicializuje lexer a jeho buffery.

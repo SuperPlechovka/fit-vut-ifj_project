@@ -129,6 +129,9 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             } else if (character == ' ' || character == '\t' || character == '\r') {
                 continue;
             } else if (character == '\n') {
+                if (lexer->parenthesis_depth > 0) {
+                    continue;
+                }
                 lexer->at_line_start = 1;
                 set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0, lexer->line - 1, 1,
                           lexer->line, 1);
@@ -151,7 +154,11 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 int next_character;
                 read_char(lexer, &next_character);
                 if (next_character == '/') {
-                    return read_line_comment(lexer, token);
+                    const LexerResult result = read_line_comment(lexer, token);
+                    if (result != LEXER_OK || lexer->parenthesis_depth == 0 || lexer->eof_emitted) {
+                        return result;
+                    }
+                    continue;
                 }
                 unread_char(lexer, next_character);
                 set_token_ok = set_token(token, TOK_SLASH, (TokenData){0}, NULL, 0, lexer->line,
@@ -183,9 +190,13 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                     break;
                 case '(':
                     type = TOK_LPAREN;
+                    lexer->parenthesis_depth++;
                     break;
                 case ')':
                     type = TOK_RPAREN;
+                    if (lexer->parenthesis_depth > 0) {
+                        lexer->parenthesis_depth--;
+                    }
                     break;
                 case ',':
                     type = TOK_COMMA;
@@ -499,7 +510,7 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
 
 /** @brief Přeskočí řádkový komentář po úvodních lomítkách.
  * @param[in,out] lexer Inicializovaný lexer.
- * @param[out] token Token NEWLINE nebo EOF.
+ * @param[out] token Token NEWLINE mimo závorky nebo token EOF na konci vstupu.
  * @retval LEXER_OK Úspěšně přeskočil komentář.
  * @retval LEXER_INTERNAL_ERROR Selhání vytvoření tokenu.
  */
@@ -510,6 +521,9 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
         read_result = read_char(lexer, &character);
     }
     if (character == '\n') {
+        if (lexer->parenthesis_depth > 0) {
+            return LEXER_OK;
+        }
         lexer->at_line_start = 1;
         const int set_result = set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0,
                                          lexer->line - 1, 1, lexer->line, 1);
