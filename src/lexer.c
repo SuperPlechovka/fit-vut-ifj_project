@@ -23,6 +23,7 @@ static int is_identifier_character(int character);
 static LexerResult handle_line_start(Lexer *lexer, Token *token, int first_character);
 static LexerResult read_line_comment(Lexer *lexer, Token *token);
 
+/** @brief Stavy automatu. */
 typedef enum lexer_scan_state {
     SCAN_START,
     SCAN_LINE_START,
@@ -382,16 +383,33 @@ LexerResult next_token(Lexer *lexer, Token *token) {
     return LEXER_OK;
 }
 
+/** @brief Rozpozná jestli je znak písmeno.
+ * @param[in] character Testovaný znak.
+ * @return Nenulová hodnota pro písmeno, jinak 0.
+ */
 static int is_letter(const int character) {
     return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z');
 }
 
+/** @brief Rozpozná jestli je znak číslice.
+ * @param[in] character Testovaný znak.
+ * @return Nenulová hodnota pro číslici, jinak 0.
+ */
 static int is_digit(const int character) { return character >= '0' && character <= '9'; }
 
+/** @brief Rozpozná jestli znak je přípustný uvnitř identifikátoru.
+ * @param[in] character Testovaný znak.
+ * @return Nenulová hodnota pro písmeno, číslici nebo podtržítko, jinak 0.
+ */
 static int is_identifier_character(const int character) {
     return is_letter(character) || is_digit(character) || character == '_';
 }
 
+/** @brief Načte znak a posune pozici lexeru.
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[out] character Načtený znak nebo EOF.
+ * @return 1 při platných ukazatelích, jinak 0.
+ */
 static int read_char(Lexer *lexer, int *character) {
     if (lexer == NULL || character == NULL) {
         return 0;
@@ -409,6 +427,14 @@ static int read_char(Lexer *lexer, int *character) {
     return 1;
 }
 
+/** @brief Zpracuje odsazení a případně vydá INDENT nebo DEDENT
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[out] token Token změny odsazení, pokud nastala.
+ * @param[in] first_character První načtený znak řádku.
+ * @retval LEXER_OK Odsazení zpracováno.
+ * @retval LEXER_ERROR Tabulátor na začátku řádku nebo neplatná úroveň odsazení.
+ * @retval LEXER_INTERNAL_ERROR Selhání alokace nebo pomocné operace.
+ */
 static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first_character) {
     size_t indent = 0;
     int character;
@@ -471,6 +497,12 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
     return LEXER_OK;
 }
 
+/** @brief Přeskočí řádkový komentář po úvodních lomítkách.
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[out] token Token NEWLINE nebo EOF.
+ * @retval LEXER_OK Úspěšně přeskočil komentář.
+ * @retval LEXER_INTERNAL_ERROR Selhání vytvoření tokenu.
+ */
 static LexerResult read_line_comment(Lexer *lexer, Token *token) {
     int character;
     int read_result = read_char(lexer, &character);
@@ -495,6 +527,11 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
     return LEXER_OK;
 }
 
+/** @brief Vrátí znak do vstupu a upraví pozici.
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[in] character Vrácený znak, EOF se nevrací
+ * @return 1 při úspěchu, jinak 0
+ */
 static int unread_char(Lexer *lexer, const int character) {
     if (lexer == NULL || character == EOF) {
         return 0;
@@ -511,6 +548,11 @@ static int unread_char(Lexer *lexer, const int character) {
     return 1;
 }
 
+/** @brief Připojí znak k lexému a podle potřeby zvětší buffer.
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[in] character Připojený znak.
+ * @return 1 při úspěchu, 0 při neplatném lexeru nebo selhání alokace.
+ */
 static int append_lexem(Lexer *lexer, const char character) {
     if (lexer == NULL) {
         return 0;
@@ -530,6 +572,9 @@ static int append_lexem(Lexer *lexer, const char character) {
     return 1;
 }
 
+/** @brief Vyprázdní lexém.
+ * @param[in,out] lexer Inicializovaný lexer, případně NULL.
+ */
 static void reset_lexem(Lexer *lexer) {
     if (lexer != NULL) {
         lexer->lexem_length = 0;
@@ -539,6 +584,11 @@ static void reset_lexem(Lexer *lexer) {
     }
 }
 
+/** @brief Určí, zda je text klíčové slovo.
+ * @param[in] text Text ukončený nulou
+ * @param[in] length Délka textu bez ukončovací nuly.
+ * @return Druh klíčového slova, jinak TOK_IDENTIFIER.
+ */
 static TokenType keyword_type(const char *text, const size_t length) {
     static const struct keyword {
         const char *text;
@@ -560,6 +610,18 @@ static TokenType keyword_type(const char *text, const size_t length) {
     return TOK_IDENTIFIER;
 }
 
+/** @brief Nastaví token a případný text zkopíruje do paměti.
+ * @param[out] token Token bez vlastněného textu.
+ * @param[in] type Druh tokenu.
+ * @param[in] data Hodnota tokenu.
+ * @param[in] text Kopírovaný text, NULL pro token bez textu.
+ * @param[in] text_length Počet kopírovaných bajtů.
+ * @param[in] line Počáteční řádek.
+ * @param[in] column Počáteční sloupec.
+ * @param[in] end_line Koncový řádek.
+ * @param[in] end_column Koncový sloupec.
+ * @return 1 při úspěchu,0 při selhání alokace.
+ */
 static int set_token(Token *token, const TokenType type, const TokenData data, const char *text,
                      const size_t text_length, const size_t line, const size_t column,
                      const size_t end_line, const size_t end_column) {
