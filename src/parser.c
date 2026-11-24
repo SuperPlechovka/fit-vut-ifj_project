@@ -96,7 +96,7 @@ static ErrorCode expect(Parser *parser, TokenType expected_type, ParseError *err
     return parserAdvance(parser, error);
 }
 
-static TypeKind typeKindFromToken(TokenType type) {
+static TypeKind tokenToTypeKind(TokenType type) {
     switch (type) {
     case TOK_KW_INT:
         return TY_INT;
@@ -112,7 +112,7 @@ static TypeKind typeKindFromToken(TokenType type) {
 }
 
 static ErrorCode parseType(Parser *parser, ParseError *error, TypeKind *out) {
-    TypeKind kind = typeKindFromToken(parser->current.type);
+    TypeKind kind = tokenToTypeKind(parser->current.type);
 
     if (kind == TY_UNKNOWN) {
         return setParserError(error, ERR_SYNTAX, &parser->current, "expected type");
@@ -146,7 +146,7 @@ static void setNodePos(Node *node, SourcePos pos) {
 }
 
 // Creates AST leaf node from token operand. Returns NULL if alocation fails.
-Node *nodeFromToken(const Parser *parser) {
+Node *tokenToNode(const Parser *parser) {
     Node *n;
 
     switch (parser->current.type) {
@@ -180,7 +180,7 @@ static ErrorCode parseTerm(Parser *parser, ParseError *error, Node **out) {
         return setParserError(error, ERR_SYNTAX, &parser->current, "expected term");
     }
 
-    *out = nodeFromToken(parser);
+    *out = tokenToNode(parser);
     if (*out == NULL) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
     }

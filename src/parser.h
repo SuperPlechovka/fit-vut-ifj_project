@@ -35,7 +35,7 @@ ErrorCode setParserErrorAt(ParseError *error, ErrorCode code, size_t line, size_
                            const char *message);
 ErrorCode parserAdvance(Parser *parser, ParseError *error);
 // Creates AST leaf node from token operand. Returns NULL if alocation fails.
-Node *nodeFromToken(const Parser *parser);
+Node *tokenToNode(const Parser *parser);
 
 // not a part of the actual API, but unit tests need to see them
 ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result);

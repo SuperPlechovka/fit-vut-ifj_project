@@ -17,7 +17,7 @@ static PrecedenceSymbol tokenToPrecSymbolOrEnd(TokenType kind) {
     return symbol == PREC_INVALID ? PREC_END : symbol;
 }
 
-static OpKind binaryOpFromPrec(PrecedenceSymbol symbol) {
+static OpKind precSymbolToOpKind(PrecedenceSymbol symbol) {
     switch (symbol) {
     case PREC_PLUS:
         return OP_ADD;
@@ -108,7 +108,7 @@ static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseE
         nodeSetPos(n, (int)lparen.line, (int)lparen.column);
 
     } else if (handle_size == 3 && handle[0] == PREC_NONTERMINAL && handle[2] == PREC_NONTERMINAL &&
-               binaryOpFromPrec(handle[1]) != OP_NONE) {
+               precSymbolToOpKind(handle[1]) != OP_NONE) {
         // E -> E op E
         Node *right, *left;
 
@@ -122,7 +122,7 @@ static ErrorCode handleReduce(PrecedenceStack *symbols, NodeStack *nodes, ParseE
         }
 
         int line = left->line, col = left->col;
-        Node *binary = nodeBinary(binaryOpFromPrec(handle[1]), left, right);
+        Node *binary = nodeBinary(precSymbolToOpKind(handle[1]), left, right);
         nodeSetPos(binary, line, col);
 
         if (binary == NULL || nodeStackPush(nodes, binary) != EXIT_SUCCESS) {
@@ -189,7 +189,7 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
             }
 
             if (input == PREC_OPERAND) {
-                Node *leaf = nodeFromToken(parser);
+                Node *leaf = tokenToNode(parser);
                 if (leaf == NULL || nodeStackPush(nodes, leaf) != EXIT_SUCCESS) {
                     nodeFree(leaf);
                     return setParserError(error, ERR_INTERNAL, NULL,
