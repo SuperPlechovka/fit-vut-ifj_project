@@ -8,6 +8,7 @@
 typedef struct ScopeBinding {
     char *orig_name;
     char *frame_name;
+    TypeKind type;
     int depth;
     struct ScopeBinding *next;
 } ScopeBinding;
@@ -118,9 +119,10 @@ static void scopeFreeAll(Gen *g) {
     }
 }
 
-static const char *scopeDeclare(Gen *g, const char *orig) {
+static const char *scopeDeclare(Gen *g, const char *orig, TypeKind type) {
     ScopeBinding *b = xcalloc(1, sizeof *b);
     b->orig_name = xstrdup(orig);
+    b->type = type;
     b->depth = g->scope_depth;
 
     if (!isNameUsed(g, orig)) {
@@ -147,6 +149,15 @@ static const char *scopeResolve(const Gen *g, const char *orig) {
             return b->frame_name;
     }
     return orig;
+}
+
+static TypeKind scopeResolveType(const Gen *g, const char *orig) {
+    const ScopeBinding *b;
+    for (b = g->bindings; b != NULL; b = b->next) {
+        if (strcmp(b->orig_name, orig) == 0)
+            return b->type;
+    }
+    return TY_UNKNOWN;
 }
 
 static const Node *findFunc(const Node *funcs, const char *name) {
@@ -737,7 +748,7 @@ static void genStmt(Gen *g, const Node *n) {
             }
             val = coerce(g, val, n->left->type, n->type);
         }
-        var_name = scopeDeclare(g, n->name);
+        var_name = scopeDeclare(g, n->name, n->type);
         emit(&g->decls, I_DEFVAR, opVar(g->frame, var_name), opNone(), opNone());
         if (n->left != NULL) {
             emit(&g->body, I_MOVE, opVar(g->frame, var_name), val, opNone());
@@ -745,15 +756,17 @@ static void genStmt(Gen *g, const Node *n) {
         break;
     }
 
-    case N_ASSIGN:
+    case N_ASSIGN: {
+        TypeKind dst_type = (n->type != TY_UNKNOWN) ? n->type : scopeResolveType(g, n->name);
         val = genExpr(g, n->left);
         if (g->err) {
             dropOp(&val);
             break;
         }
-        val = coerce(g, val, n->left->type, n->type);
+        val = coerce(g, val, n->left->type, dst_type);
         emit(&g->body, I_MOVE, opVar(g->frame, scopeResolve(g, n->name)), val, opNone());
         break;
+    }
 
     case N_WRITE:
         if (n->left != NULL && n->left->type == TY_UNIT) {
@@ -862,7 +875,7 @@ static int genFunc(const Node *f, const Node *funcs, ListOfInstr *out, int *lbl_
         emit(&head, I_PUSHFRAME, opNone(), opNone(), opNone());
         for (p = f->args; p != NULL; p = p->next, param_idx++) {
             char pbuf[32];
-            const char *pname = scopeDeclare(&g, p->name);
+            const char *pname = scopeDeclare(&g, p->name, p->type); // <-- tady doplnit p->type
             snprintf(pbuf, sizeof pbuf, "$%d", param_idx);
             emit(&head, I_DEFVAR, opVar(FR_LF, pname), opNone(), opNone());
             emit(&head, I_MOVE, opVar(FR_LF, pname), opVar(FR_LF, pbuf), opNone());
@@ -919,7 +932,6 @@ static int genFunc(const Node *f, const Node *funcs, ListOfInstr *out, int *lbl_
     return 0;
 }
 
-/* cppcheck-suppress unusedFunction */
 int codegenProgram(const Node *prog, ListOfInstr *out) {
     const Node *f;
     int lbl_seq = 0;
