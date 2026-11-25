@@ -481,6 +481,10 @@ static ErrorCode analyseReturn(SemanticContext *context, Node *node, BlockResult
             return code;
         }
 
+        if (valueType == TY_BOOL) {
+            return typeError(context, node, "relational expression cannot be returned");
+        }
+
         // explicit return type of Unit => value is evaluated and discarded, type remains
         // unvalidated
         if (returnType != TY_UNIT && !isAssignable(returnType, valueType)) {
@@ -621,7 +625,14 @@ static ErrorCode analyseStatement(SemanticContext *context, Node *node, BlockRes
 
     default:
         result->returns = false;
-        return analyseExpression(context, node, &result->type);
+        code = analyseExpression(context, node, &result->type);
+
+        // Bool can only be used directly as an if/while condition (spec 3)
+        if (code == ERR_OK && result->type == TY_BOOL) {
+            return typeError(context, node, "relational expression outside of a condition");
+        }
+
+        return code;
     }
 }
 
