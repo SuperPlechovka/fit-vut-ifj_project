@@ -23,6 +23,6 @@
  * @param[out] out Ukazatel na seznam instrukcí, do kterého bude vygenerovaný kód uložen.
  * @return Nula (0) při úspěšném vygenerování kódu, jinak nenulový chybový kód.
  */
-int codegenProgram(Node *prog, ListOfInstr *out);
+int codegenProgram(const Node *prog, ListOfInstr *out);
 
 #endif /* INSIDECODEGENE_H */
