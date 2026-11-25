@@ -13,6 +13,9 @@
  * - syntaktické chyby: neuzavřené volání, chybějící čárka, prázdný argument, čárka navíc,
  *   výraz nebo volání jako argument (bez FUNEXP jsou argumenty jen termy) - kód 2;
  * - lexikální chybu v argumentu - kód 1.
+ * Doplněno promptem: napiš testy na opravy z review PR - literál () jako argument (i pozice
+ * uzlu), koncová čárka jen s ) na dalším řádku (spec 1.2), uvolnění termu po lexikální
+ * chybě (ASan).
  * Model: Claude Opus 5.5, Claude Code.
  */
 #include "../../src/parser.h"
@@ -200,11 +203,59 @@ static void test_errors(void) {
     expect_error("f(1.2.3)", ERR_LEXICAL);
 }
 
+/* literál () je term (spec 1.1, pravidlo 55) */
+static void test_unit_argument(void) {
+    expect_tree("print(())", "print(())", TOK_EOF);
+    expect_tree("f((), x)", "f((), x)", TOK_EOF);
+    expect_tree("f(1, ())", "f(1, ())", TOK_EOF);
+    expect_tree("f((), ())", "f((), ())", TOK_EOF);
+
+    /* pozice uzlu () je pozice ( */
+    CallRun run;
+    run_parse(&run, "f(1,  ())");
+    assert(run.code == ERR_OK);
+    const Node *unit = run.result->args->next;
+    assert(unit != NULL && unit->kind == N_LIT_UNIT);
+    assert(unit->line == 1 && unit->col == 7);
+    finish(&run);
+
+    expect_error("f(()", ERR_SYNTAX);
+    expect_error("f((1))", ERR_SYNTAX);    /* závorkový výraz není term */
+    expect_error("f(() ())", ERR_SYNTAX);
+}
+
+/* Koncová čárka (spec 1.2): jen když ) následuje až na dalším řádku.
+ * Vyžaduje lexer, který uvnitř závorek neposílá NEWLINE (feature/lexer od 4956f0b). */
+static void test_trailing_comma(void) {
+    expect_tree("f(a,\n)", "f(a)", TOK_EOF);
+    expect_tree("f(a, b,\n)", "f(a, b)", TOK_EOF);
+    expect_tree("f(\n    a,\n    b,\n)", "f(a, b)", TOK_EOF);
+    expect_tree("f(a, // komentar\n)", "f(a)", TOK_EOF);
+    expect_tree("f((),\n)", "f(())", TOK_EOF);
+
+    /* ) na stejném řádku jako čárka - chyba (viz i test_errors: f(a,)) */
+    expect_error("f(a, )", ERR_SYNTAX);
+    /* koncová čárka jen za neprázdným seznamem a jen jedna */
+    expect_error("f(,\n)", ERR_SYNTAX);
+    expect_error("f(a,,\n)", ERR_SYNTAX);
+    expect_error("f(a,\n,\n)", ERR_SYNTAX);
+}
+
+/* Po lexikální chybě za vytvořeným termem se uzel musí uvolnit (ASan hlásí únik). */
+static void test_error_cleanup(void) {
+    expect_error("print(\"x\", $)", ERR_LEXICAL);
+    expect_error("print((), $)", ERR_LEXICAL);
+    expect_error("f(a, b, \"s\" $)", ERR_LEXICAL);
+}
+
 int main(void) {
     test_call_arguments();
     test_call_end();
     test_call_position();
     test_expression_branch();
     test_errors();
+    test_unit_argument();
+    test_trailing_comma();
+    test_error_cleanup();
     return 0;
 }
