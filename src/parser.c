@@ -176,16 +176,38 @@ static bool isTerm(TokenType type) {
 }
 
 static ErrorCode parseTerm(Parser *parser, ParseError *error, Node **out) {
-    if (!isTerm(parser->current.type)) {
+    *out = NULL;
+
+    bool isUnit = isTokenTypeEqual(parser, TOK_LPAREN) && parser->lookahead.type == TOK_RPAREN;
+
+    if (!isUnit && !isTerm(parser->current.type)) {
         return setParserError(error, ERR_SYNTAX, &parser->current, "expected term");
     }
 
-    *out = tokenToNode(parser);
-    if (*out == NULL) {
+    SourcePos pos = currentPos(parser);
+    Node *term = isUnit ? nodeLitUnit() : tokenToNode(parser);
+
+    if (term == NULL) {
         return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
     }
 
-    return parserAdvance(parser, error);
+    if (isUnit) {
+        setNodePos(term, pos); // tokenToNode sets the position by itself
+    }
+
+    ErrorCode code = parserAdvance(parser, error);
+
+    if (code == ERR_OK && isUnit) {
+        code = parserAdvance(parser, error);
+    }
+
+    if (code != ERR_OK) {
+        nodeFree(term);
+        return code;
+    }
+
+    *out = term;
+    return ERR_OK;
 }
 
 typedef ErrorCode (*ItemParser)(Parser *parser, ParseError *error, Node **out);
@@ -211,10 +233,16 @@ static ErrorCode parseCommaList(Parser *parser, ParseError *error, ItemParser pa
             return ERR_OK;
         }
 
+        size_t commaLine = parser->current.line;
         code = parserAdvance(parser, error);
 
         if (code != ERR_OK) {
             return code;
+        }
+
+        // trailing comma is allowed only if ')' follows on a later line (spec 1.2)
+        if (isTokenTypeEqual(parser, TOK_RPAREN) && parser->current.line > commaLine) {
+            return ERR_OK;
         }
     }
 }
@@ -684,6 +712,7 @@ static ErrorCode parseMain(Parser *parser, ParseError *error, bool *isMain) {
         return ERR_OK;
     }
 
+    SourcePos pos = currentPos(parser);
     ErrorCode code = parserAdvance(parser, error);
 
     if (code != ERR_OK) {
@@ -695,6 +724,12 @@ static ErrorCode parseMain(Parser *parser, ParseError *error, bool *isMain) {
         return setParserError(error, ERR_SYNTAX, &parser->current, "expected id main");
     }
 
+    // no character is allowed between @ and main (spec 2.1)
+    if (parser->current.line != pos.line || parser->current.column != pos.column + 1) {
+        return setParserError(error, ERR_SYNTAX, &parser->current,
+                              "no whitespace allowed between @ and main");
+    }
+
     *isMain = true;
 
     code = parserAdvance(parser, error);
@@ -702,22 +737,6 @@ static ErrorCode parseMain(Parser *parser, ParseError *error, bool *isMain) {
     if (code == ERR_OK) {
         code = parseNewlineOptional(parser, error);
     }
-
-    // //-------------------------------------------------
-    // if (code == ERR_OK) {
-    //     if (!isTokenTypeEqual(parser, TOK_IDENTIFIER) ||
-    //         (strcmp(parser->current.data.text, "main") != 0)) {
-    //         return setParserError(error, ERR_SYNTAX, &parser->current, "expected id main");
-    //     }
-    //
-    //     *isMain = true;
-    //
-    //     code = parserAdvance(parser, error);
-    //
-    //     if (code == ERR_OK) {
-    //         code = parseNewlineOptional(parser, error);
-    //     }
-    // }
 
     return code;
 }

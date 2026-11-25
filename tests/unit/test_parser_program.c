@@ -16,6 +16,8 @@
  *   funkci) - kód 2; lexikální chybu - kód 1.
  * Případy závislé na opravách lexeru (prázdné řádky, komentáře, blokové komentáře)
  * jsou zvlášť v test_lexer_dependent.
+ * Doplněno promptem: napiš testy na opravy z review PR - mezi @ a main nesmí být žádný
+ * znak (spec 2.1), koncová čárka v parametrech a argumentech jen s ) na dalším řádku.
  * Model: Claude Opus 5.5, Claude Code.
  */
 #include "../../src/parser.h"
@@ -383,6 +385,22 @@ static void test_main_errors(void) {
     expect_error(PROLOG "@main @main def f() = 1\n", ERR_SYNTAX);
     expect_error(PROLOG "@5 def f() = 1\n", ERR_SYNTAX);
     expect_error(PROLOG "@main\n@main\ndef f() = 1\n", ERR_SYNTAX);
+    /* mezi @ a main nesmí být žádný znak (spec 2.1) */
+    expect_error(PROLOG "@ main def f() = 1\n", ERR_SYNTAX);
+    expect_error(PROLOG "@  main\ndef f() = 1\n", ERR_SYNTAX);
+    expect_error(PROLOG "@\nmain def f() = 1\n", ERR_SYNTAX);
+    expect_error(PROLOG "@/* c */main def f() = 1\n", ERR_SYNTAX);
+}
+
+/* Koncová čárka v parametrech (spec 1.2) - ) musí být až na dalším řádku.
+ * Vyžaduje lexer, který uvnitř závorek neposílá NEWLINE (feature/lexer od 4956f0b). */
+static void test_params_trailing_comma(void) {
+    expect_program(PROLOG "def f(a: Int,\n) = 1\n", "f(a: Int) = {1}");
+    expect_program(PROLOG "def f(\n    a: Int,\n    b: String,\n): Int = 1\n",
+                   "f(a: Int, b: String): Int = {1}");
+    expect_program(PROLOG "def f() = g(1,\n    2,\n)\n", "f() = {g(1, 2)}");
+    expect_error(PROLOG "def f(a: Int, ) = 1\n", ERR_SYNTAX);
+    expect_error(PROLOG "def f(,\n) = 1\n", ERR_SYNTAX);
 }
 
 static void test_header_errors(void) {
@@ -469,6 +487,7 @@ int main(void) {
     test_fields();
     test_prolog_errors();
     test_main_errors();
+    test_params_trailing_comma();
     test_header_errors();
     test_param_errors();
     test_body_errors();
