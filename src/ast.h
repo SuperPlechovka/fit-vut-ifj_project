@@ -111,7 +111,7 @@ Node *nodeNew(NodeKind kind);
 void nodeFree(Node *n);
 
 Node *nodeLitInt(long long v);
-Node *nodeLitUInt(unsigned long long v);
+
 Node *nodeLitDouble(double v);
 Node *nodeLitString(const char *s);
 Node *nodeVar(const char *name);
