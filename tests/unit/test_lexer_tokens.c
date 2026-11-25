@@ -206,8 +206,6 @@ static void test_edge_cases(void) {
     token_free(&token);
     read_token(&lexer, &token, TOK_NEWLINE);
     token_free(&token);
-    read_token(&lexer, &token, TOK_NEWLINE);
-    token_free(&token);
     read_token(&lexer, &token, TOK_IDENTIFIER);
     token_free(&token);
     read_token(&lexer, &token, TOK_NEWLINE);
@@ -217,7 +215,7 @@ static void test_edge_cases(void) {
     lexer_destroy(&lexer);
     fclose(input);
 
-    input = input_from_text("((a + // komentář\n\tb)\n  + c)\n  d\n");
+    input = input_from_text("((a + // komentář\n  b)\n  + c)\n  d\n");
     const TokenType expected[] = {
         TOK_LPAREN, TOK_LPAREN,     TOK_IDENTIFIER, TOK_PLUS,   TOK_IDENTIFIER,
         TOK_RPAREN, TOK_PLUS,       TOK_IDENTIFIER, TOK_RPAREN, TOK_NEWLINE,

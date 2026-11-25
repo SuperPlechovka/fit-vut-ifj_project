@@ -22,6 +22,7 @@ static int is_digit(int character);
 static int is_identifier_character(int character);
 static LexerResult handle_line_start(Lexer *lexer, Token *token, int first_character);
 static LexerResult read_line_comment(Lexer *lexer, Token *token);
+static LexerResult finish_input(Lexer *lexer, Token *token);
 
 /** @brief Stavy automatu. */
 typedef enum lexer_scan_state {
@@ -63,6 +64,8 @@ LexerResult lexer_init(Lexer *lexer, FILE *input) {
     lexer->at_line_start = 1;
     lexer->eof_emitted = 0;
     lexer->parenthesis_depth = 0;
+    lexer->previous_column = 1;
+    lexer->pending_slash = 0;
     return LEXER_OK;
 }
 
@@ -80,6 +83,24 @@ LexerResult next_token(Lexer *lexer, Token *token) {
         return LEXER_INTERNAL_ERROR;
     }
     token_init(token);
+    if (lexer->pending_dedents > 0) {
+        const int set_result = set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column, lexer->line, lexer->column);
+        if (!set_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        lexer->pending_dedents--;
+        return LEXER_OK;
+    }
+    if (lexer->pending_slash) {
+        const int set_result = set_token(token, TOK_SLASH, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column - 1, lexer->line, lexer->column);
+        if (!set_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        lexer->pending_slash = 0;
+        return LEXER_OK;
+    }
     if (lexer->eof_emitted) {
         const int eof_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line,
                                          lexer->column, lexer->line, lexer->column);
@@ -111,28 +132,18 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 continue;
             }
             if (character == EOF) {
-                if (lexer->indent_depth > 1) {
-                    lexer->indent_depth--;
-                    set_token_ok =
-                        set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line,
-                                  lexer->column, lexer->line, lexer->column);
-                    if (!set_token_ok) {
-                        return LEXER_INTERNAL_ERROR;
-                    }
-                    lexer->at_line_start = 1;
-                    return LEXER_OK;
+                const LexerResult result = finish_input(lexer, token);
+                if (result != LEXER_OK) {
+                    return result;
                 }
-                set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line, lexer->column,
-                          lexer->line, lexer->column);
-                lexer->eof_emitted = 1;
                 state = SCAN_DONE;
             } else if (character == ' ' || character == '\t' || character == '\r') {
                 continue;
             } else if (character == '\n') {
+                lexer->at_line_start = 1;
                 if (lexer->parenthesis_depth > 0) {
                     continue;
                 }
-                lexer->at_line_start = 1;
                 set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0, lexer->line - 1, 1,
                           lexer->line, 1);
                 state = SCAN_DONE;
@@ -152,10 +163,14 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 state = SCAN_STRING;
             } else if (character == '/') {
                 int next_character;
-                read_char(lexer, &next_character);
+                const int next_read_result = read_char(lexer, &next_character);
+                if (!next_read_result) {
+                    return LEXER_INTERNAL_ERROR;
+                }
                 if (next_character == '/') {
                     const LexerResult result = read_line_comment(lexer, token);
-                    if (result != LEXER_OK || lexer->parenthesis_depth == 0 || lexer->eof_emitted) {
+                    if (result != LEXER_OK || token->type == TOK_NEWLINE ||
+                        token->type == TOK_DEDENT || token->type == TOK_EOF) {
                         return result;
                     }
                     continue;
@@ -230,7 +245,8 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             if (indentation_result != LEXER_OK) {
                 return indentation_result;
             }
-            if (token->type == TOK_INDENT || token->type == TOK_DEDENT) {
+            if (token->type == TOK_INDENT || token->type == TOK_DEDENT ||
+                token->type == TOK_SLASH || token->type == TOK_EOF) {
                 state = SCAN_DONE;
             } else {
                 state = SCAN_START;
@@ -425,9 +441,10 @@ static int read_char(Lexer *lexer, int *character) {
     if (lexer == NULL || character == NULL) {
         return 0;
     }
+    lexer->previous_column = lexer->column;
     *character = fgetc(lexer->input);
     if (*character == EOF) {
-        return 1;
+        return !ferror(lexer->input);
     }
     if (*character == '\n') {
         lexer->line++;
@@ -448,27 +465,71 @@ static int read_char(Lexer *lexer, int *character) {
  */
 static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first_character) {
     size_t indent = 0;
-    int character;
-
-    if (first_character == '\t') {
-        return LEXER_ERROR;
-    }
-    character = first_character;
-    while (character == ' ') {
-        indent++;
-        const int read_result = read_char(lexer, &character);
-        if (!read_result) {
+    int character = first_character;
+    while (1) {
+        int has_tab = 0;
+        indent = 0;
+        while (character == ' ' || character == '\t' || character == '\r') {
+            if (character == ' ') {
+                indent++;
+            } else if (character == '\t') {
+                has_tab = 1;
+            }
+            const int read_result = read_char(lexer, &character);
+            if (!read_result) {
+                return LEXER_INTERNAL_ERROR;
+            }
+        }
+        if (character == EOF) {
+            lexer->at_line_start = 0;
+            return finish_input(lexer, token);
+        }
+        if (character == '\n') {
+            const int read_result = read_char(lexer, &character);
+            if (!read_result) {
+                return LEXER_INTERNAL_ERROR;
+            }
+            continue;
+        }
+        if (character == '/') {
+            int next_character;
+            const int read_result = read_char(lexer, &next_character);
+            if (!read_result) {
+                return LEXER_INTERNAL_ERROR;
+            }
+            if (next_character == '/') {
+                const LexerResult result = read_line_comment(lexer, token);
+                if (result != LEXER_OK || token->type == TOK_DEDENT || token->type == TOK_EOF) {
+                    return result;
+                }
+                token_init(token);
+                const int next_read_result = read_char(lexer, &character);
+                if (!next_read_result) {
+                    return LEXER_INTERNAL_ERROR;
+                }
+                continue;
+            }
+            if (next_character != EOF && !unread_char(lexer, next_character)) {
+                return LEXER_INTERNAL_ERROR;
+            }
+            lexer->pending_slash = 1;
+        } else if (!unread_char(lexer, character)) {
             return LEXER_INTERNAL_ERROR;
         }
+        if (has_tab) {
+            return LEXER_ERROR;
+        }
+        break;
     }
-    unread_char(lexer, character);
 
     lexer->at_line_start = 0;
-    if (character == '\n' || character == EOF) {
-        return LEXER_OK;
-    }
-
     const size_t previous_indent = lexer->indents[lexer->indent_depth - 1];
+    if (lexer->parenthesis_depth > 0) {
+        if (indent <= previous_indent) {
+            return LEXER_ERROR;
+        }
+        indent = previous_indent;
+    }
     if (indent > previous_indent) {
         if (lexer->indent_depth == lexer->indent_capacity) {
             const size_t new_capacity = lexer->indent_capacity * 2;
@@ -498,12 +559,20 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
     }
     if (lexer->pending_dedents > 0) {
         lexer->pending_dedents--;
-        lexer->at_line_start = 1;
         const int set_result =
             set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, 1);
         if (!set_result) {
             return LEXER_INTERNAL_ERROR;
         }
+        return LEXER_OK;
+    }
+    if (lexer->pending_slash) {
+        const int set_result = set_token(token, TOK_SLASH, (TokenData){0}, NULL, 0, lexer->line,
+                                         lexer->column - 1, lexer->line, lexer->column);
+        if (!set_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        lexer->pending_slash = 0;
     }
     return LEXER_OK;
 }
@@ -520,11 +589,14 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
     while (read_result && character != '\n' && character != EOF) {
         read_result = read_char(lexer, &character);
     }
+    if (!read_result) {
+        return LEXER_INTERNAL_ERROR;
+    }
     if (character == '\n') {
+        lexer->at_line_start = 1;
         if (lexer->parenthesis_depth > 0) {
             return LEXER_OK;
         }
-        lexer->at_line_start = 1;
         const int set_result = set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0,
                                          lexer->line - 1, 1, lexer->line, 1);
         if (!set_result) {
@@ -532,12 +604,29 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
         }
         return LEXER_OK;
     }
-    const int set_result = set_token(token, TOK_EOF, (TokenData){0}, NULL, 0, lexer->line,
+    return finish_input(lexer, token);
+}
+
+/** @brief Na konci vstupu postupně uzavře bloky a pak vydá EOF.
+ * @param[in,out] lexer Inicializovaný lexer.
+ * @param[out] token Token DEDENT nebo EOF.
+ * @retval LEXER_OK Token nastaven.
+ * @retval LEXER_INTERNAL_ERROR Selhání vytvoření tokenu.
+ */
+static LexerResult finish_input(Lexer *lexer, Token *token) {
+    TokenType type = TOK_EOF;
+    if (lexer->indent_depth > 1) {
+        lexer->indent_depth--;
+        type = TOK_DEDENT;
+    }
+    const int set_result = set_token(token, type, (TokenData){0}, NULL, 0, lexer->line,
                                      lexer->column, lexer->line, lexer->column);
     if (!set_result) {
         return LEXER_INTERNAL_ERROR;
     }
-    lexer->eof_emitted = 1;
+    if (type == TOK_EOF) {
+        lexer->eof_emitted = 1;
+    }
     return LEXER_OK;
 }
 
@@ -556,6 +645,7 @@ static int unread_char(Lexer *lexer, const int character) {
         if (lexer->line > 1) {
             lexer->line--;
         }
+        lexer->column = lexer->previous_column;
     } else if (lexer->column > 1) {
         lexer->column--;
     }
