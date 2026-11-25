@@ -1,3 +1,11 @@
+/**
+ * @file ast.h
+ * @brief Abstraktní syntaktický strom (AST) pro překladač jazyka IFJ26.
+ * @details Projekt: Implementace překladače IFJ26 (IFJ/IAL 2026/2027).
+ *
+ *
+ * @author Vojtěch Matěj (xmatejv00)
+ */
 #ifndef AST_H
 #define AST_H
 
@@ -13,6 +21,7 @@ typedef enum {
     N_BINARY,
     N_UNARY,
     N_CALL,
+
     /* příkazy */
     N_DECL,
     N_ASSIGN,
@@ -20,6 +29,7 @@ typedef enum {
     N_RETURN,
     N_IF,
     N_WHILE,
+
     /* parametr funkce */
     N_PARAM,
 
@@ -30,22 +40,29 @@ typedef enum {
 
 typedef enum {
     OP_NONE,
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_LT,
-    OP_LE,
-    OP_GT,
-    OP_GE,
-    OP_EQ,
-    OP_NE,
-    OP_NEG,
-    OP_AND,
-    OP_OR
+    OP_ADD, /* + */
+    OP_SUB, /* - */
+    OP_MUL, /* * */
+    OP_DIV, /* / */
+    OP_LT,  /* < */
+    OP_LE,  /* <= */
+    OP_GT,  /* > */
+    OP_GE,  /* >= */
+    OP_EQ,  /* == */
+    OP_NE,  /* != */
+    OP_NEG, /* unární - */
+    OP_AND, /* && */
+    OP_OR   /* || */
 } OpKind;
 
-typedef enum { TY_UNKNOWN, TY_INT, TY_DOUBLE, TY_STRING, TY_UNIT, TY_BOOL } TypeKind;
+typedef enum {
+    TY_UNKNOWN, /* typ zatím neurčen */
+    TY_INT,     /* Int */
+    TY_DOUBLE,  /* Double */
+    TY_STRING,  /* String */
+    TY_UNIT,    /* Unit */
+    TY_BOOL     /* interní logický typ pro podmínky */
+} TypeKind;
 
 /*
  * Uzel abstraktního syntaktického stromu.
@@ -107,31 +124,32 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
+/* základní správa uzlů a seznamů */
 Node *nodeNew(NodeKind kind);
 void nodeFree(Node *n);
+void nodeSetPos(Node *n, int line, int col);
+void nodeAppend(Node **list, Node *node);
 
+/* konstruktory uzlů výrazů */
 Node *nodeLitInt(long long v);
-
 Node *nodeLitDouble(double v);
 Node *nodeLitString(const char *s);
+Node *nodeLitUnit(void);
 Node *nodeVar(const char *name);
 Node *nodeBinary(OpKind op, Node *l, Node *r);
 Node *nodeUnary(OpKind op, Node *operand);
 Node *nodeCall(const char *name, Node *args);
 
+/* konstruktory uzlů příkazů */
 Node *nodeDecl(const char *name, int is_var, TypeKind declared, Node *init);
 Node *nodeAssign(const char *name, Node *expr);
 Node *nodeWrite(Node *expr);
 Node *nodeReturn(Node *expr);
-
 Node *nodeIf(Node *cond, Node *then_body, Node *else_body);
 Node *nodeWhile(Node *cond, Node *body);
 
-Node *nodeLitUnit(void);
+/* konstruktory struktury programu a funkcí */
+Node *nodeParam(const char *name, TypeKind type);
 Node *nodeFunc(const char *name, int is_main, TypeKind ret, Node *body);
 Node *nodeProgram(Node *funcs);
-
-void nodeSetPos(Node *n, int line, int col);
-void nodeAppend(Node **list, Node *node);
-Node *nodeParam(const char *name, TypeKind type);
 #endif
