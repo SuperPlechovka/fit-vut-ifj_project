@@ -25,6 +25,7 @@ static LexerResult finish_number(Lexer *lexer, Token *token, size_t line, size_t
 static LexerResult read_multiline_string(Lexer *lexer, Token *token, size_t line, size_t column);
 static LexerResult handle_line_start(Lexer *lexer, Token *token, int first_character);
 static LexerResult read_line_comment(Lexer *lexer, Token *token);
+static LexerResult read_block_comment(Lexer *lexer, Token *token);
 static LexerResult finish_input(Lexer *lexer, Token *token);
 
 /** @brief Stavy automatu. */
@@ -179,6 +180,13 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                     const LexerResult result = read_line_comment(lexer, token);
                     if (result != LEXER_OK || token->type == TOK_NEWLINE ||
                         token->type == TOK_DEDENT || token->type == TOK_EOF) {
+                        return result;
+                    }
+                    continue;
+                }
+                if (next_character == '*') {
+                    const LexerResult result = read_block_comment(lexer, token);
+                    if (result != LEXER_OK || token->type == TOK_NEWLINE) {
                         return result;
                     }
                     continue;
@@ -654,11 +662,11 @@ static int read_char(Lexer *lexer, int *character) {
 static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first_character) {
     size_t indent = 0;
     int character = first_character;
+    int has_tab = 0;
+    int after_comment = 0;
     while (1) {
-        int has_tab = 0;
-        indent = 0;
         while (character == ' ' || character == '\t' || character == '\r') {
-            if (character == ' ') {
+            if (character == ' ' && !after_comment) {
                 indent++;
             } else if (character == '\t') {
                 has_tab = 1;
@@ -677,6 +685,9 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
             if (!read_result) {
                 return LEXER_INTERNAL_ERROR;
             }
+            indent = 0;
+            has_tab = 0;
+            after_comment = 0;
             continue;
         }
         if (character == '/') {
@@ -685,12 +696,25 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
             if (!read_result) {
                 return LEXER_INTERNAL_ERROR;
             }
-            if (next_character == '/') {
-                const LexerResult result = read_line_comment(lexer, token);
+            if (next_character == '/' || next_character == '*') {
+                const size_t comment_line = lexer->line;
+                LexerResult result;
+                if (next_character == '/') {
+                    result = read_line_comment(lexer, token);
+                } else {
+                    result = read_block_comment(lexer, token);
+                }
                 if (result != LEXER_OK || token->type == TOK_DEDENT || token->type == TOK_EOF) {
                     return result;
                 }
                 token_init(token);
+                if (lexer->line != comment_line) {
+                    indent = 0;
+                    has_tab = 0;
+                    after_comment = 0;
+                } else {
+                    after_comment = 1;
+                }
                 const int next_read_result = read_char(lexer, &character);
                 if (!next_read_result) {
                     return LEXER_INTERNAL_ERROR;
@@ -793,6 +817,66 @@ static LexerResult read_line_comment(Lexer *lexer, Token *token) {
         return LEXER_OK;
     }
     return finish_input(lexer, token);
+}
+
+/** @brief Přeskočí blokový komentář i komentáře vnořené v něj
+ * @param[in,out] lexer Lexer, ze kterého se čte.
+ * @param[out] token TOK_NEWLINE pokud komentář obsahuje nový řádek a je mimo závorky.
+ * @retval LEXER_OK Komentář přeskočen.
+ * @retval LEXER_ERROR Chybí uzavření nebo za víceřádkovým komentářem následuje kód.
+ * @retval LEXER_INTERNAL_ERROR Chyba při čtení nebo vytvoření tokenu.
+ */
+static LexerResult read_block_comment(Lexer *lexer, Token *token) {
+    size_t depth = 1;
+    size_t newline_line = 0;
+    int previous = 0;
+    while (depth > 0) {
+        int character;
+        const int read_result = read_char(lexer, &character);
+        if (!read_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        if (character == EOF) {
+            return LEXER_ERROR;
+        }
+        if (character == '\n' && newline_line == 0) {
+            newline_line = lexer->line - 1;
+        }
+        if (previous == '/' && character == '*') {
+            depth++;
+            previous = 0;
+        } else if (previous == '*' && character == '/') {
+            depth--;
+            previous = 0;
+        } else {
+            previous = character;
+        }
+    }
+    if (newline_line == 0) {
+        return LEXER_OK;
+    }
+
+    int character;
+    int read_result = read_char(lexer, &character);
+    while (read_result && (character == ' ' || character == '\t' || character == '\r')) {
+        read_result = read_char(lexer, &character);
+    }
+    if (!read_result) {
+        return LEXER_INTERNAL_ERROR;
+    }
+    if (character != '\n' && character != EOF) {
+        return LEXER_ERROR;
+    }
+    lexer->at_line_start = 1;
+    if (lexer->parenthesis_depth > 0) {
+        return LEXER_OK;
+    }
+    const int set_result = set_token(token, TOK_NEWLINE, (TokenData){0}, NULL, 0, newline_line, 1,
+                                     lexer->line, lexer->column);
+    if (!set_result) {
+        return LEXER_INTERNAL_ERROR;
+    }
+    return LEXER_OK;
 }
 
 /** @brief Na konci vstupu postupně uzavře bloky a pak vydá EOF.
