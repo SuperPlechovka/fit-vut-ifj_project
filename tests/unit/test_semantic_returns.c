@@ -225,8 +225,7 @@ static void test_bool_result(void) {
                  ERR_TYPE);
 }
 
-/* Čeká na opravu DEDENT v lexeru (návrat odsazení na nenulovou úroveň před else).
- * Do té doby v main vypnuto. */
+/* If/else a cykly uvnitř těla (návrat odsazení na nenulovou úroveň). */
 static void test_lexer_dependent(void) {
     /* kontroly platí i pro nedosažitelný kód: return uvnitř cyklu */
     expect_error(PROLOG "def f(): Int =\n"
@@ -286,6 +285,6 @@ int main(void) {
     test_recursion();
     test_callee_scope();
     test_bool_result();
-    (void)test_lexer_dependent; /* zapnout po opravě DEDENT v lexeru */
+    test_lexer_dependent();
     return 0;
 }

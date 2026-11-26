@@ -99,8 +99,8 @@ static void expect_error_at(const char *text, ErrorCode expected, size_t line, s
     SemanticRun run;
     run_semantic(&run, text);
     if (run.code != expected || run.error.line != line || run.error.column != column) {
-        fprintf(stderr, "očekávána chyba %d na %zu:%zu, dostal %d na %zu:%zu (%s):\n%s\n",
-                expected, line, column, run.code, run.error.line, run.error.column,
+        fprintf(stderr, "očekávána chyba %d na %zu:%zu, dostal %d na %zu:%zu (%s):\n%s\n", expected,
+                line, column, run.code, run.error.line, run.error.column,
                 run.error.message != NULL ? run.error.message : "", text);
     }
     assert(run.code == expected);
@@ -306,8 +306,7 @@ static void test_bool_outside_condition(void) {
                  ERR_TYPE);
 }
 
-/* Vnořené bloky. Lexer zatím při návratu o jednu úroveň odsazení (8 -> 4) vyrábí DEDENT
- * navíc, takže tyhle programy se nezparsují. Až to opraví, zapni test v main. */
+/* Vnořené bloky: překrytí, rozsahy větví if a těla while. */
 static void test_nested_blocks(void) {
     /* překrytí v podbloku, inicializace vidí vnější proměnnou */
     expect_ok(MAIN "    val x = 1\n"
@@ -406,6 +405,6 @@ int main(void) {
     test_type_errors();
     test_expressions();
     test_bool_outside_condition();
-    (void)test_nested_blocks; /* viz komentář u test_nested_blocks */
+    test_nested_blocks();
     return 0;
 }

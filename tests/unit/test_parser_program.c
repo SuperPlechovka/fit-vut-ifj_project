@@ -467,8 +467,7 @@ static void test_lexical_error(void) {
     expect_error(PROLOG "def f() =\n    x = \"abc\n", ERR_LEXICAL);
 }
 
-/* Čeká na opravy lexeru: prázdný řádek a řádek jen s komentářem nemají posílat NEWLINE,
- * blokový komentář se má přeskočit. Do té doby v main zakomentováno. */
+/* Prázdné řádky, řádky jen s komentářem a blokové komentáře (lexer je přeskakuje). */
 static void test_lexer_dependent(void) {
     expect_program("// komentar\n" PROLOG "def f() = 1\n", "f() = {1}");
     expect_program("\n\n" PROLOG "def f() = 1\n", "f() = {1}");
@@ -500,7 +499,6 @@ int main(void) {
     test_body_errors();
     test_top_level_errors();
     test_lexical_error();
-    // TODO: odkomentovat po opravě lexeru (prázdné řádky, komentáře)
-    (void)test_lexer_dependent;
+    test_lexer_dependent();
     return 0;
 }
