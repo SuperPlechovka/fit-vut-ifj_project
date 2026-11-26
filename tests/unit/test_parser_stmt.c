@@ -230,6 +230,7 @@ static void test_var_def(void) {
     expect_stmt("val y = a + b * c", "val y = (a + (b * c))", TOK_EOF);
     expect_stmt("val n = readInt()", "val n = readInt()", TOK_EOF);
     expect_stmt("var r: Int = f(a, 1)", "var r: Int = f(a, 1)", TOK_EOF);
+    expect_stmt("var x = f(a + b)", "var x = f((a + b))", TOK_EOF);
 }
 
 static void test_var_def_fields(void) {
@@ -322,7 +323,6 @@ static void test_errors(void) {
     expect_error("val x: Int", ERR_SYNTAX);
     expect_error("val x: Int 5", ERR_SYNTAX);
     expect_error("var x = 5 +", ERR_SYNTAX);
-    expect_error("var x = f(a + b)", ERR_SYNTAX);
 
     /* přiřazení */
     expect_error("x =", ERR_SYNTAX);

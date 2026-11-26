@@ -10,7 +10,7 @@
 | `Int` `Double` `String` `Unit` | `TOK_KW_INT`, `TOK_KW_DOUBLE`, `TOK_KW_STRING`, `TOK_KW_UNIT` |
 | `(` `)` `,` `:` `;` `.` `*` `=` `@` | `TOK_LPAREN`, `TOK_RPAREN`, `TOK_COMMA`, `TOK_COLON`, `TOK_SEMICOLON`, `TOK_DOT`, `TOK_STAR`, `TOK_ASSIGN`, `TOK_AT` |
 | `NEWLINE` `INDENT` `DEDENT` `EOF` | `TOK_NEWLINE`, `TOK_INDENT`, `TOK_DEDENT`, `TOK_EOF` |
-| `expr` | výraz, zpracuje ho precedenční analýza (`parseExpression`); patří sem i literál `()` |
+| `expr` | výraz, zpracuje ho precedenční analýza (`parseExpression`); patří sem i literál `()` a volání funkcí |
 | `eps` | prázdný řetězec |
 
 ## Pravidla
@@ -26,7 +26,7 @@ Program a funkce
  7. <main_opt>        -> eps
  8. <nl_opt>          -> NEWLINE
  9. <nl_opt>          -> eps
-10. <func_body>       -> <expr_or_call> NEWLINE         // jednořádková funkce
+10. <func_body>       -> expr NEWLINE                   // jednořádková funkce
 11. <func_body>       -> <block>                        // víceřádková funkce
 
 Parametry a typy
@@ -54,38 +54,31 @@ Bloky a příkazy
 31. <stmt_sep>        -> ; <nl_opt>
 32. <simple_stmt>     -> <var_def>
 33. <simple_stmt>     -> <return>
-34. <simple_stmt>     -> id = <expr_or_call>            // LL(2): id a za ním =
-35. <simple_stmt>     -> <expr_or_call>
-36. <var_def>         -> <var_kind> id <type_opt> = <expr_or_call>
+34. <simple_stmt>     -> id = expr                    // LL(2): id a za ním =
+35. <simple_stmt>     -> expr
+36. <var_def>         -> <var_kind> id <type_opt> = expr
 37. <var_kind>        -> val
 38. <var_kind>        -> var
 39. <return>          -> return <ret_value>
-40. <ret_value>       -> <expr_or_call>
+40. <ret_value>       -> expr
 41. <ret_value>       -> eps
 42. <if>              -> if expr then <block> else <block>
 43. <while>           -> while expr do <block>
 
-Výraz nebo volání
-44. <expr_or_call>    -> <call>                         // LL(2): id a za ním (
-45. <expr_or_call>    -> expr
-46. <call>            -> id ( <args> )
-47. <args>            -> <term> <args_tail>
-48. <args>            -> eps
-49. <args_tail>       -> , <term> <args_tail>
-50. <args_tail>       -> eps
-51. <term>            -> id
-52. <term>            -> int_lit
-53. <term>            -> double_lit
-54. <term>            -> string_lit
+Volání funkcí (součást expr v precedenční analýze)
+44. <call>            -> id ( <args> )
+45. <args>            -> expr <args_tail>
+46. <args>            -> eps
+47. <args_tail>       -> , expr <args_tail>
+48. <args_tail>       -> eps
 ```
 
 ## Poznámky
 
-Gramatika je LL(1) až na dvě místa, kde více pravidel začíná terminálem `id`:
+Gramatika je LL(1) až na jedno místo, kde více pravidel začíná terminálem `id`:
 
 | neterminál | pravidla | rozhodnutí podle druhého tokenu (`parser->lookahead`) |
 |---|---|---|
-| `<simple_stmt>` | 34 (`id =`), 35 (`<expr_or_call>`) | `=` -> pravidlo 34, jinak 35 |
-| `<expr_or_call>` | 44 (`<call>`), 45 (`expr`) | `(` -> pravidlo 44, jinak 45 |
+| `<simple_stmt>` | 34 (`id =`), 35 (`expr`) | `=` -> pravidlo 34, jinak 35 |
 
-V těchto dvou místech je tedy analýza LL(2), všude jinde stačí jeden token (`parser->current`).
+V tomto místě je tedy analýza LL(2), všude jinde stačí jeden token (`parser->current`).

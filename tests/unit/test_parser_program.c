@@ -44,8 +44,11 @@ static void run_program(ProgramRun *run, const char *text) {
     rewind(run->input);
 
     assert(lexer_init(&run->lexer, run->input) == LEXER_OK);
-    assert(parserInit(&run->parser, &run->lexer, &run->error) == ERR_OK);
-    run->code = parseProgram(&run->parser, &run->error, &run->result);
+    /* parserInit načte už první dva tokeny, takže lexikální chyba může přijít i tady */
+    run->code = parserInit(&run->parser, &run->lexer, &run->error);
+    if (run->code == ERR_OK) {
+        run->code = parseProgram(&run->parser, &run->error, &run->result);
+    }
 }
 
 static void finish(ProgramRun *run) {
@@ -369,7 +372,8 @@ static void test_prolog_errors(void) {
     expect_error("import ifj26\n", ERR_SYNTAX);
     expect_error("import ifj26.\n", ERR_SYNTAX);
     expect_error("import .*\n", ERR_SYNTAX);
-    expect_error("import 5.*\n", ERR_SYNTAX);
+    /* 5. není platný Double (spec 1.1: desetinná část je povinná) - chyba lexeru */
+    expect_error("import 5.*\n", ERR_LEXICAL);
     expect_error("import ifj26.*.*\n", ERR_SYNTAX);
     expect_error("import ifj26.* def f() = 1\n", ERR_SYNTAX);
     expect_error(PROLOG "import ifj26.*\n", ERR_SYNTAX);
@@ -393,14 +397,17 @@ static void test_main_errors(void) {
 }
 
 /* Koncová čárka v parametrech (spec 1.2) - ) musí být až na dalším řádku.
- * Vyžaduje lexer, který uvnitř závorek neposílá NEWLINE (feature/lexer od 4956f0b). */
+ * Uvnitř závorek musí být pokračovací řádek odsazen víc než začátek logického řádku
+ * (spec 1.2), proto je ) odsazená. */
 static void test_params_trailing_comma(void) {
-    expect_program(PROLOG "def f(a: Int,\n) = 1\n", "f(a: Int) = {1}");
-    expect_program(PROLOG "def f(\n    a: Int,\n    b: String,\n): Int = 1\n",
+    expect_program(PROLOG "def f(a: Int,\n    ) = 1\n", "f(a: Int) = {1}");
+    expect_program(PROLOG "def f(\n    a: Int,\n    b: String,\n    ): Int = 1\n",
                    "f(a: Int, b: String): Int = {1}");
-    expect_program(PROLOG "def f() = g(1,\n    2,\n)\n", "f() = {g(1, 2)}");
+    expect_program(PROLOG "def f() = g(1,\n    2,\n    )\n", "f() = {g(1, 2)}");
     expect_error(PROLOG "def f(a: Int, ) = 1\n", ERR_SYNTAX);
-    expect_error(PROLOG "def f(,\n) = 1\n", ERR_SYNTAX);
+    expect_error(PROLOG "def f(,\n    ) = 1\n", ERR_SYNTAX);
+    /* neodsazený pokračovací řádek uvnitř závorek - chyba odsazení = lexikální */
+    expect_error(PROLOG "def f(a: Int,\n) = 1\n", ERR_LEXICAL);
 }
 
 static void test_header_errors(void) {
