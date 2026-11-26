@@ -22,9 +22,18 @@
 /.gitattributes @SuperPlechovka
 /.gitignore     @SuperPlechovka
 
-/src/lexer.h    @SuperPlechovka
-/src/lexer.c    @SuperPlechovka
-/src/token.h    @SuperPlechovka
-/src/token.c    @SuperPlechovka
-/tests/unit/test_lexer_setup.c  @SuperPlechovka
-/tests/unit/test_lexer_tokens.c @SuperPlechovka
+# AST, instrukční seznam a generování vnitřního kódu.
+/src/ast.c                  @LoafOFBreadCat
+/src/ast.h                  @LoafOFBreadCat
+/src/ilist.c                @LoafOFBreadCat
+/src/ilist.h                @LoafOFBreadCat
+/src/insidecodegene.c       @LoafOFBreadCat
+/src/insidecodegene.h       @LoafOFBreadCat
+/tests/unit/test_codegen.c  @LoafOFBreadCat
+
+# Lexer, tokeny a jejich testy.
+/src/lexer.h                   @SuperPlechovka
+/src/lexer.c                   @SuperPlechovka
+/src/token.h                   @SuperPlechovka
+/src/token.c                   @SuperPlechovka
+/tests/unit/test_lexer_*.c      @SuperPlechovka

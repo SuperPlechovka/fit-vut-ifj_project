@@ -153,6 +153,7 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
     }
 
     SourcePos lparen = {0};
+    int paren_depth = 0;
 
     while (true) {
         PrecedenceSymbol top;
@@ -160,6 +161,10 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
             return setParserError(error, ERR_INTERNAL, NULL, "no terminals on precedence stack");
         }
         PrecedenceSymbol input = tokenToPrecSymbolOrEnd(parser->current.type);
+
+        if (input == PREC_RPAREN && paren_depth == 0) {
+            input = PREC_END;
+        }
 
         if (input == PREC_MINUS) {
             PrecedenceSymbol prev;
@@ -182,14 +187,29 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
                                       "out of memory (failed to push onto stack)");
             }
         // fall-through
-        case REL_EQUAL:
+        case REL_EQUAL: {
+            bool is_call = (input == PREC_OPERAND && parser->current.type == TOK_IDENTIFIER &&
+                            parser->lookahead.type == TOK_LPAREN);
+
             if (input == PREC_LPAREN) {
                 lparen.line = parser->current.line;
                 lparen.column = parser->current.column;
+                paren_depth++;
+            } else if (input == PREC_RPAREN) {
+                paren_depth--;
             }
 
             if (input == PREC_OPERAND) {
-                Node *leaf = tokenToNode(parser);
+                Node *leaf = NULL;
+                if (is_call) {
+                    ErrorCode rc = parseCall(parser, error, &leaf);
+                    if (rc != ERR_OK) {
+                        return rc;
+                    }
+                } else {
+                    leaf = tokenToNode(parser);
+                }
+
                 if (leaf == NULL || nodeStackPush(nodes, leaf) != EXIT_SUCCESS) {
                     nodeFree(leaf);
                     return setParserError(error, ERR_INTERNAL, NULL,
@@ -202,12 +222,15 @@ static ErrorCode runPrecedenceAnalysis(Parser *parser, PrecedenceStack *symbols,
                                       "out of memory (failed to push onto stack)");
             }
 
-            ErrorCode rc = parserAdvance(parser, error);
-            if (rc != ERR_OK) {
-                return rc;
+            if (!is_call) {
+                ErrorCode rc = parserAdvance(parser, error);
+                if (rc != ERR_OK) {
+                    return rc;
+                }
             }
 
             break;
+        }
         case REL_REDUCE: {
             ErrorCode rc = handleReduce(symbols, nodes, error, &parser->current, lparen);
             if (rc != ERR_OK) {

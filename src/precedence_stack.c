@@ -79,7 +79,7 @@ int precedenceStackPush(PrecedenceStack *stack, PrecedenceSymbol symbol) {
 }
 
 int precedenceStackPop(PrecedenceStack *stack, PrecedenceSymbol *result) {
-    if (stack->size <= 0) {
+    if (stack->size == 0) {
         return EXIT_FAILURE;
     }
 
@@ -97,7 +97,7 @@ int precedenceStackPeek(const PrecedenceStack *stack, PrecedenceSymbol *result) 
     return EXIT_SUCCESS;
 }
 
-bool precedenceStackIsEmpty(PrecedenceStack *stack) { return stack->size == 0; }
+bool precedenceStackIsEmpty(const PrecedenceStack *stack) { return stack->size == 0; }
 
 void precedenceStackDestroy(PrecedenceStack *stack) { free(stack->items); }
 

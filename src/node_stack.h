@@ -19,7 +19,7 @@ int nodeStackInit(NodeStack *stack);
 int nodeStackPush(NodeStack *stack, Node *node);
 int nodeStackPop(NodeStack *stack, Node **result);
 int nodeStackPeek(const NodeStack *stack, Node **result);
-bool nodeStackIsEmpty(NodeStack *stack);
+bool nodeStackIsEmpty(const NodeStack *stack);
 void nodeStackDestroy(NodeStack *stack);
 
 #endif
