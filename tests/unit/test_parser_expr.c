@@ -122,6 +122,17 @@ static void ast_to_text(const Node *node, char *buffer, size_t size) {
         ast_to_text(node->right, buffer, size);
         strncat(buffer, ")", size - strlen(buffer) - 1);
         break;
+    case N_CALL:
+        snprintf(out, left, "%s(", node->name);
+        for (const Node *arg = node->args; arg != NULL; arg = arg->next) {
+            ast_to_text(arg, buffer, size);
+            if (arg->next != NULL) {
+                strncat(buffer, ", ", size - strlen(buffer) - 1);
+            }
+        }
+        strncat(buffer, ")", size - strlen(buffer) - 1);
+        break;
+
     default:
         snprintf(out, left, "<kind %d>", (int)node->kind);
         break;
@@ -226,6 +237,7 @@ static void test_expression_end(void) {
     expect_tree("x > 0 do", "(x > 0)", TOK_KW_DO);
     expect_tree("a + b\nc", "(a + b)", TOK_NEWLINE);
     expect_tree("a = 1", "a", TOK_ASSIGN);
+    expect_tree("a)", "a", TOK_RPAREN);
 }
 
 static void test_leaf_position(void) {
@@ -244,8 +256,8 @@ static void test_errors(void) {
     expect_error("a +", ERR_SYNTAX);
     expect_error("a b", ERR_SYNTAX);
     expect_error("(a", ERR_SYNTAX);
-    expect_error("a)", ERR_SYNTAX);
-    expect_error("a ()", ERR_SYNTAX);
+    expect_error(")", ERR_SYNTAX);
+    expect_error("5 ()", ERR_SYNTAX);
     expect_error("() a", ERR_SYNTAX);
     expect_error("+ a", ERR_SYNTAX);
     expect_error("* a", ERR_SYNTAX);
@@ -254,6 +266,10 @@ static void test_errors(void) {
     expect_error("", ERR_SYNTAX);
     expect_error("then", ERR_SYNTAX);
     expect_error("a + 1.2.3", ERR_LEXICAL);
+}
+static void test_funexp(void) {
+    expect_tree("a ()", "a()", TOK_EOF);
+    expect_tree("f(a, b + 1) * 2", "(f(a, (b + 1)) * 2)", TOK_EOF);
 }
 
 int main(void) {
@@ -265,5 +281,6 @@ int main(void) {
     test_expression_end();
     test_leaf_position();
     test_errors();
+    test_funexp();
     return 0;
 }

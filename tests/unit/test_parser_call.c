@@ -162,7 +162,7 @@ static void test_call_end(void) {
     expect_tree("f(a)\nx", "f(a)", TOK_NEWLINE);
     expect_tree("f(a); x", "f(a)", TOK_SEMICOLON);
     /* volání uvnitř výrazu (FUNEXP) neřeší parseExprOrCall, + nechá pro volajícího */
-    expect_tree("f(a) + 1", "f(a)", TOK_PLUS);
+    expect_tree("f(a) + 1", "<binary>", TOK_EOF);
 }
 
 static void test_call_position(void) {
@@ -195,9 +195,13 @@ static void test_errors(void) {
     expect_error("f(,)", ERR_SYNTAX);
     expect_error("f(a,)", ERR_SYNTAX);
     expect_error("f(a,,b)", ERR_SYNTAX);
-    expect_error("f(a + b)", ERR_SYNTAX);
-    expect_error("f(g(x))", ERR_SYNTAX);
     expect_error("f(1.2.3)", ERR_LEXICAL);
+}
+static void test_funexp(void) {
+    expect_tree("f(a) + 1", "<binary>", TOK_EOF);
+    expect_tree("f(a + b)", "f(<binary>)", TOK_EOF);
+    expect_tree("f(g(x))", "f(g(x))", TOK_EOF);
+    expect_tree("1 + f(a * 2, g(b))", "<binary>", TOK_EOF);
 }
 
 int main(void) {
@@ -206,5 +210,6 @@ int main(void) {
     test_call_position();
     test_expression_branch();
     test_errors();
+    test_funexp();
     return 0;
 }
