@@ -470,19 +470,12 @@ static ErrorCode parseStatementSeparator(Parser *parser, ParseError *error) {
     // 31. <stmt_sep>        -> ; <nl_opt>
 
     if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
-        while (isTokenTypeEqual(parser, TOK_NEWLINE)) {
-            ErrorCode code = parserAdvance(parser, error);
-            if (code != ERR_OK) {
-                return code;
-            }
-        }
-        return ERR_OK;
+        return parserAdvance(parser, error);
     }
 
     if (isTokenTypeEqual(parser, TOK_SEMICOLON)) {
         ErrorCode code = parserAdvance(parser, error);
-
-        while (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        if (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
             code = parserAdvance(parser, error);
         }
         return code;
@@ -557,9 +550,6 @@ ErrorCode parseBlock(Parser *parser, ParseError *error, Node **result) {
     *result = NULL;
 
     ErrorCode code = expect(parser, TOK_NEWLINE, error);
-    while (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
-        code = parserAdvance(parser, error);
-    }
 
     if (code == ERR_OK) {
         code = expect(parser, TOK_INDENT, error);

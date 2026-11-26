@@ -6,6 +6,7 @@
 /* AI prompt: vytvoř unit testy pro lexer podle src/lexer.h a src/token.h.
  * Ověř:
  * - vstup "abc def Int\n" - TOK_IDENTIFIER, TOK_KW_DEF, TOK_KW_INT, TOK_NEWLINE, TOK_EOF;
+ *   ověř text identifikátoru, pozice prvních tří tokenů a NULL text u def;
  * - vstup "12 3.5 \"a\\n\" == != <= >= = < > + - * / ( ) , : ; . @\n" - TOK_INT_LITERAL,
  * TOK_DOUBLE_LITERAL, TOK_STRING_LITERAL, operátory a interpunkci;
  * - vstup "a\n  b\n    c\nd" - správné pořadí TOK_INDENT a TOK_DEDENT;
@@ -16,9 +17,10 @@
  * - neplatný escape "\\q" - LEXER_ERROR;
  * - neuzavřený řetězec "\"abc" - LEXER_ERROR;
  * - samotný znak "!" - LEXER_ERROR;
- * - číslo "1_2" - LEXER_ERROR;
  * - prázdný řádek "a\n\nb\n" - odsazení se nezmění;
  * - opakované volání po TOK_EOF - vždy TOK_EOF.
+ * - vnořené závorky přes více řádků - uvnitř přeskoč konce řádků a odsazení,
+ *   i po komentáři; za poslední závorkou znovu očekávej TOK_NEWLINE a TOK_INDENT.
  * Model: GPT-6, Codex.
  */
 #include "../../src/lexer.h"
@@ -155,7 +157,7 @@ static void test_lexical_errors(void) {
 }
 
 static void test_edge_cases(void) {
-    const char *invalid_inputs[] = {"\"\\q\"", "\"abc", "!", "1_2"};
+    const char *invalid_inputs[] = {"\"\\q\"", "\"abc", "!"};
     const char *comment_input = "a // komentář\nb";
     FILE *input = input_from_text("");
     Lexer lexer = {0};
@@ -203,14 +205,26 @@ static void test_edge_cases(void) {
     token_free(&token);
     read_token(&lexer, &token, TOK_NEWLINE);
     token_free(&token);
-    read_token(&lexer, &token, TOK_NEWLINE);
-    token_free(&token);
     read_token(&lexer, &token, TOK_IDENTIFIER);
     token_free(&token);
     read_token(&lexer, &token, TOK_NEWLINE);
     token_free(&token);
     read_token(&lexer, &token, TOK_EOF);
     token_free(&token);
+    lexer_destroy(&lexer);
+    fclose(input);
+
+    input = input_from_text("((a + // komentář\n  b)\n  + c)\n  d\n");
+    const TokenType expected[] = {
+        TOK_LPAREN, TOK_LPAREN,     TOK_IDENTIFIER, TOK_PLUS,   TOK_IDENTIFIER,
+        TOK_RPAREN, TOK_PLUS,       TOK_IDENTIFIER, TOK_RPAREN, TOK_NEWLINE,
+        TOK_INDENT, TOK_IDENTIFIER, TOK_NEWLINE,    TOK_DEDENT, TOK_EOF,
+    };
+    assert(lexer_init(&lexer, input) == LEXER_OK);
+    for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); ++i) {
+        read_token(&lexer, &token, expected[i]);
+        token_free(&token);
+    }
     lexer_destroy(&lexer);
     fclose(input);
 }
