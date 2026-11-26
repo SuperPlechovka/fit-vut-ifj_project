@@ -13,6 +13,9 @@
  * - typ výsledku volání při inicializaci a přiřazení - kód 6;
  * - že se typ zapíše do node->type uzlu N_CALL (pro generátor).
  * Těla jsou bez if/else, aby testy nezávisely na chybě lexeru s DEDENT.
+ * Doplněno promptem: přidej testy na rozšíření FUNEXP (spec 5.1) - volání ve výrazech,
+ * výrazy a vnořená volání v argumentech, typové chyby uvnitř výrazů, a na zákaz předání
+ * Boolean jako argumentu (spec 3) - kód 6.
  * Model: Claude Opus 5.5, Claude Code.
  */
 #include "../../src/parser.h"
@@ -174,7 +177,7 @@ static void test_argument_types(void) {
     /* chyba se hlásí na pozici argumentu */
     expect_error_at(IN_MAIN("    strLength(5)\n"), ERR_CALL, 3, 15);
     expect_error(IN_MAIN("    toInt(\"s\")\n"), ERR_CALL);
-    expect_error(IN_MAIN("    chr(1.5)\n"), ERR_CALL);  /* Double -> Int neexistuje */
+    expect_error(IN_MAIN("    chr(1.5)\n"), ERR_CALL); /* Double -> Int neexistuje */
     expect_error(IN_MAIN("    subStr(\"a\", 0, \"b\")\n"), ERR_CALL);
     expect_error(PROLOG "def f(x: Int): Int = x\n"
                         "@main def run(): Unit =\n"
@@ -217,6 +220,44 @@ static void test_call_node_type(void) {
     finish(&run);
 }
 
+/* FUNEXP (spec 5.1): volání ve výrazech, výrazy a volání v argumentech */
+static void test_funexp(void) {
+    /* příklad přímo ze specifikace */
+    expect_ok(PROLOG "def factorial(n: Int): Int = n\n"
+                     "@main def run(): Unit =\n"
+                     "    val result = 2 * factorial(readInt() + 1)\n"
+                     "    print(toStr(result + strLength(subStr(\"abcd\", 1, 3))))\n");
+    /* výsledek volání jako operand, Int -> Double */
+    expect_ok(IN_MAIN("    val d: Double = toInt(2.5) + 0.5\n"));
+    /* volání před definicí uvnitř výrazu, odvozený návratový typ */
+    expect_ok(PROLOG "@main def run(): Unit =\n"
+                     "    val x = g(1) * 2\n"
+                     "def g(a: Int) = a\n");
+    /* volání v podmínce */
+    expect_ok(IN_MAIN("    while readInt() < 3 do\n"
+                      "        print(1)\n"));
+    /* Unit výsledek jako operand */
+    expect_error(IN_MAIN("    val a = 1 + print(1)\n"), ERR_TYPE);
+    /* výraz v argumentu se špatným typem - chyba volání */
+    expect_error(IN_MAIN("    val n = strLength(1 + 2)\n"), ERR_CALL);
+    /* String + Int ve výrazu s voláním */
+    expect_error(IN_MAIN("    val s = toStr(1) + 2\n"), ERR_TYPE);
+    /* nedefinovaná funkce uvnitř výrazu */
+    expect_error(IN_MAIN("    val a = 1 + foo()\n"), ERR_UNDEFINED);
+}
+
+/* Spec 3: Bool lze použít jen přímo v podmínce - nelze ho předat jako argument. */
+static void test_bool_argument(void) {
+    expect_error_at(IN_MAIN("    print(1 < 2)\n"), ERR_TYPE, 3, 11);
+    expect_error(IN_MAIN("    val s = toStr(1 == 1)\n"), ERR_TYPE);
+    expect_error(PROLOG "def f(x: Int): Int = x\n"
+                        "@main def run(): Unit =\n"
+                        "    val a = f(1 < 2)\n",
+                 ERR_TYPE);
+    /* relační výraz jako operand uvnitř argumentu je pořád chyba (Bool jako operand) */
+    expect_error(IN_MAIN("    print((1 < 2) + 1)\n"), ERR_TYPE);
+}
+
 int main(void) {
     test_builtins();
     test_user_functions();
@@ -225,5 +266,7 @@ int main(void) {
     test_argument_types();
     test_result_type();
     test_call_node_type();
+    test_funexp();
+    test_bool_argument();
     return 0;
 }

@@ -774,6 +774,11 @@ static ErrorCode analyseCall(SemanticContext *context, Node *node, TypeKind *out
             return code;
         }
 
+        // bool can only be used directly as an if/while condition (spec 3)
+        if (argType == TY_BOOL) {
+            return typeError(context, arg, "relational expression cannot be passed as argument");
+        }
+
         SymbolType paramType = function->parameter_types[i];
 
         if (paramType != SYMBOL_TYPE_ANY &&
