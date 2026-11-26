@@ -28,6 +28,8 @@ typedef struct lexer {
     int at_line_start;        /**< Příznak začátku řádku. */
     int eof_emitted;          /**< Příznak vydaného tokenu EOF. */
     size_t parenthesis_depth; /**< Hloubka závorek pro potlačení nových řádků a odsazení. */
+    size_t previous_column;   /**< Sloupec před posledním načteným znakem. */
+    int pending_slash;        /**< Lomítko načtené při kontrole odsazení, čekající na vydání. */
 } Lexer;
 
 /** @brief Inicializuje lexer a jeho buffery.
