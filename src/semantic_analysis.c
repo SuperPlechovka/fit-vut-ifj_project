@@ -3,7 +3,7 @@
  * @author Frantisek Fiala (xfialaf00@vutbr.cz)
  */
 #include "semantic_analysis.h"
-#include "symbol_table.h"
+#include "symtable.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -793,8 +793,14 @@ static ErrorCode analyseCall(SemanticContext *context, Node *node, TypeKind *out
         return ERR_OK;
     }
 
-    size_t index;
+    size_t index = 0;
     Node *callee = findFunction(context, node->name, &index);
+
+    if (callee == NULL) {
+        return setParserErrorAt(context->error, ERR_INTERNAL, node->line, node->col,
+                                "function in table but not in program");
+    }
+
     return resolveReturnType(context, node, callee, index, out);
 }
 
