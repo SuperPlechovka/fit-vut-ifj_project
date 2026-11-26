@@ -20,6 +20,8 @@ static int set_token(Token *token, TokenType type, TokenData data, const char *t
 static int is_letter(int character);
 static int is_digit(int character);
 static int is_identifier_character(int character);
+static int check_digit_sequence(const char *text, size_t *position);
+static LexerResult finish_number(Lexer *lexer, Token *token, size_t line, size_t column);
 static LexerResult handle_line_start(Lexer *lexer, Token *token, int first_character);
 static LexerResult read_line_comment(Lexer *lexer, Token *token);
 static LexerResult finish_input(Lexer *lexer, Token *token);
@@ -155,7 +157,10 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             } else if (is_digit(character)) {
                 token_line = lexer->line;
                 token_column = lexer->column - 1;
-                append_lexem(lexer, (char)character);
+                const int append_result = append_lexem(lexer, (char)character);
+                if (!append_result) {
+                    return LEXER_INTERNAL_ERROR;
+                }
                 state = SCAN_NUMBER;
             } else if (character == '"') {
                 token_line = lexer->line;
@@ -222,9 +227,28 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 case ';':
                     type = TOK_SEMICOLON;
                     break;
-                case '.':
+                case '.': {
+                    token_line = lexer->line;
+                    token_column = lexer->column - 1;
+                    int next_character;
+                    const int next_read_result = read_char(lexer, &next_character);
+                    if (!next_read_result) {
+                        return LEXER_INTERNAL_ERROR;
+                    }
+                    if (next_character != EOF && !unread_char(lexer, next_character)) {
+                        return LEXER_INTERNAL_ERROR;
+                    }
+                    if (is_digit(next_character)) {
+                        const int append_result = append_lexem(lexer, '.');
+                        if (!append_result) {
+                            return LEXER_INTERNAL_ERROR;
+                        }
+                        state = SCAN_NUMBER;
+                        continue;
+                    }
                     type = TOK_DOT;
                     break;
+                }
                 case '@':
                     type = TOK_AT;
                     break;
@@ -293,6 +317,10 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                     state = SCAN_ERROR;
             } else {
                 unread_char(lexer, character);
+                if (lexer->lexem_length == 1 && lexer->lexem[0] == '_') {
+                    state = SCAN_ERROR;
+                    break;
+                }
                 const TokenType token_type = keyword_type(lexer->lexem, lexer->lexem_length);
                 if (token_type == TOK_IDENTIFIER) {
                     set_token_ok = set_token(token, token_type, (TokenData){0}, lexer->lexem,
@@ -311,46 +339,33 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             }
             break;
 
-        case SCAN_NUMBER:
-            if (is_digit(character) || character == '.') {
+        case SCAN_NUMBER: {
+            const char previous = lexer->lexem[lexer->lexem_length - 1];
+            const int exponent_sign =
+                (character == '+' || character == '-') && (previous == 'e' || previous == 'E');
+            if (is_digit(character) || character == '.' || character == '_' || character == 'e' ||
+                character == 'E' || character == 'd' || character == 'D' || exponent_sign) {
                 const int append_result = append_lexem(lexer, (char)character);
-                if (!append_result)
-                    state = SCAN_ERROR;
+                if (!append_result) {
+                    return LEXER_INTERNAL_ERROR;
+                }
             } else {
                 unread_char(lexer, character);
-                if (is_letter(character) || character == '_') {
+                if (is_letter(character)) {
                     state = SCAN_ERROR;
                     break;
                 }
-                size_t dot_count = 0;
-                for (size_t i = 0; i < lexer->lexem_length; ++i) {
-                    if (lexer->lexem[i] == '.')
-                        dot_count++;
-                }
-                if (dot_count > 1) {
+                const LexerResult result = finish_number(lexer, token, token_line, token_column);
+                if (result == LEXER_ERROR) {
                     state = SCAN_ERROR;
                     break;
                 }
-                if (strchr(lexer->lexem, '.') != NULL) {
-                    TokenData data = {0};
-                    data.num_float_val = strtod(lexer->lexem, NULL);
-                    set_token_ok =
-                        set_token(token, TOK_DOUBLE_LITERAL, data, NULL, 0, token_line,
-                                  token_column, token_line, token_column + lexer->lexem_length);
-                } else {
-                    TokenData data = {0};
-                    data.num_int_val = strtoll(lexer->lexem, NULL, 10);
-                    set_token_ok =
-                        set_token(token, TOK_INT_LITERAL, data, NULL, 0, token_line, token_column,
-                                  token_line, token_column + lexer->lexem_length);
-                }
-                if (!set_token_ok) {
-                    state = SCAN_ERROR;
-                    break;
+                if (result != LEXER_OK) {
+                    return result;
                 }
                 state = SCAN_DONE;
             }
-            break;
+        } break;
 
         case SCAN_STRING:
             if (character == '"') {
@@ -430,6 +445,103 @@ static int is_digit(const int character) { return character >= '0' && character 
  */
 static int is_identifier_character(const int character) {
     return is_letter(character) || is_digit(character) || character == '_';
+}
+
+/** @brief Přeskočí neprázdnou posloupnost číslic s případnými podtržítky.
+ * @param[in] text Číselný zápis ukončený nulou.
+ * @param[in,out] position Začátek posloupnosti, při úspěchu její konec.
+ * @return 1 pro platnou posloupnost, jinak 0.
+ */
+static int check_digit_sequence(const char *text, size_t *position) {
+    if (!is_digit(text[*position])) {
+        return 0;
+    }
+    while (is_digit(text[*position]) || text[*position] == '_') {
+        if (text[*position] == '_' &&
+            (!is_digit(text[*position - 1]) || !is_digit(text[*position + 1]))) {
+            return 0;
+        }
+        (*position)++;
+    }
+    return 1;
+}
+
+/** @brief Ověří celý číselný zápis, odstraní oddělovače, nastaví hodnotu tokenu.
+ * @param[in,out] lexer Lexer s načteným číselným lexémem.
+ * @param[out] token Celočíselný nebo desetinný token
+ * @param[in] line Počáteční řádek čísla
+ * @param[in] column Počáteční sloupec čísla.
+ * @retval LEXER_OK Token nastaven.
+ * @retval LEXER_ERROR Neplatný zápis.
+ * @retval LEXER_INTERNAL_ERROR Selhání vytváření tokenu.
+ */
+static LexerResult finish_number(Lexer *lexer, Token *token, const size_t line,
+                                 const size_t column) {
+    size_t position = 0;
+    int is_float = 0;
+    if (lexer->lexem[position] != '.' && !check_digit_sequence(lexer->lexem, &position)) {
+        return LEXER_ERROR;
+    }
+    if (lexer->lexem[position] == '.') {
+        is_float = 1;
+        position++;
+        if (!check_digit_sequence(lexer->lexem, &position)) {
+            return LEXER_ERROR;
+        }
+    }
+    if (lexer->lexem[position] == 'e' || lexer->lexem[position] == 'E') {
+        is_float = 1;
+        position++;
+        if (lexer->lexem[position] == '+' || lexer->lexem[position] == '-') {
+            position++;
+        }
+        if (!check_digit_sequence(lexer->lexem, &position)) {
+            return LEXER_ERROR;
+        }
+    }
+    if (is_float && (lexer->lexem[position] == 'd' || lexer->lexem[position] == 'D')) {
+        position++;
+    }
+    if (lexer->lexem[position] != '\0') {
+        return LEXER_ERROR;
+    }
+
+    const size_t source_length = lexer->lexem_length;
+    size_t length = 0;
+    for (size_t i = 0; i < source_length; ++i) {
+        if (lexer->lexem[i] != '_') {
+            lexer->lexem[length] = lexer->lexem[i];
+            length++;
+        }
+    }
+    if (is_float && (lexer->lexem[length - 1] == 'd' || lexer->lexem[length - 1] == 'D')) {
+        length--;
+    }
+    lexer->lexem[length] = '\0';
+    lexer->lexem_length = length;
+
+    TokenData data = {0};
+    TokenType type;
+    char *end;
+    if (is_float) {
+        type = TOK_DOUBLE_LITERAL;
+        data.num_float_val = strtod(lexer->lexem, &end);
+    } else {
+        type = TOK_INT_LITERAL;
+        data.num_int_val = strtoll(lexer->lexem, &end, 10);
+        if (lexer->lexem[0] == '0' && data.num_int_val != 0) {
+            return LEXER_ERROR;
+        }
+    }
+    if (*end != '\0') {
+        return LEXER_ERROR;
+    }
+    const int set_result =
+        set_token(token, type, data, NULL, 0, line, column, line, column + source_length);
+    if (!set_result) {
+        return LEXER_INTERNAL_ERROR;
+    }
+    return LEXER_OK;
 }
 
 /** @brief Načte znak a posune pozici lexeru.

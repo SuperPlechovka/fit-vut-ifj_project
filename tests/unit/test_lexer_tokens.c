@@ -17,7 +17,6 @@
  * - neplatný escape "\\q" - LEXER_ERROR;
  * - neuzavřený řetězec "\"abc" - LEXER_ERROR;
  * - samotný znak "!" - LEXER_ERROR;
- * - číslo "1_2" - LEXER_ERROR;
  * - prázdný řádek "a\n\nb\n" - odsazení se nezmění;
  * - opakované volání po TOK_EOF - vždy TOK_EOF.
  * - vnořené závorky přes více řádků - uvnitř přeskoč konce řádků a odsazení,
@@ -158,7 +157,7 @@ static void test_lexical_errors(void) {
 }
 
 static void test_edge_cases(void) {
-    const char *invalid_inputs[] = {"\"\\q\"", "\"abc", "!", "1_2"};
+    const char *invalid_inputs[] = {"\"\\q\"", "\"abc", "!"};
     const char *comment_input = "a // komentář\nb";
     FILE *input = input_from_text("");
     Lexer lexer = {0};
