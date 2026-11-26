@@ -22,6 +22,7 @@ static int is_digit(int character);
 static int is_identifier_character(int character);
 static int check_digit_sequence(const char *text, size_t *position);
 static LexerResult finish_number(Lexer *lexer, Token *token, size_t line, size_t column);
+static LexerResult read_multiline_string(Lexer *lexer, Token *token, size_t line, size_t column);
 static LexerResult handle_line_start(Lexer *lexer, Token *token, int first_character);
 static LexerResult read_line_comment(Lexer *lexer, Token *token);
 static LexerResult finish_input(Lexer *lexer, Token *token);
@@ -119,6 +120,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
     size_t token_line = lexer->line;
     size_t token_column = lexer->column;
     int operator_first = 0;
+    int string_start = 0;
 
     while (state != SCAN_DONE && state != SCAN_ERROR) {
         const int read_result = read_char(lexer, &character);
@@ -165,6 +167,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             } else if (character == '"') {
                 token_line = lexer->line;
                 token_column = lexer->column - 1;
+                string_start = 1;
                 state = SCAN_STRING;
             } else if (character == '/') {
                 int next_character;
@@ -368,13 +371,38 @@ LexerResult next_token(Lexer *lexer, Token *token) {
         } break;
 
         case SCAN_STRING:
+            if (string_start) {
+                string_start = 0;
+                if (character == '"') {
+                    int next_character;
+                    const int next_read_result = read_char(lexer, &next_character);
+                    if (!next_read_result) {
+                        return LEXER_INTERNAL_ERROR;
+                    }
+                    if (next_character == '"') {
+                        const LexerResult result =
+                            read_multiline_string(lexer, token, token_line, token_column);
+                        if (result == LEXER_ERROR) {
+                            state = SCAN_ERROR;
+                            break;
+                        }
+                        if (result != LEXER_OK) {
+                            return result;
+                        }
+                        state = SCAN_DONE;
+                        break;
+                    }
+                    if (next_character != EOF && !unread_char(lexer, next_character)) {
+                        return LEXER_INTERNAL_ERROR;
+                    }
+                }
+            }
             if (character == '"') {
                 set_token_ok = set_token(token, TOK_STRING_LITERAL, (TokenData){0}, lexer->lexem,
-                                         lexer->lexem_length, token_line, token_column, token_line,
-                                         token_column + lexer->lexem_length);
+                                         lexer->lexem_length, token_line, token_column, lexer->line,
+                                         lexer->column);
                 if (!set_token_ok) {
-                    state = SCAN_ERROR;
-                    break;
+                    return LEXER_INTERNAL_ERROR;
                 }
                 state = SCAN_DONE;
             } else if (character == '\\') {
@@ -385,7 +413,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                 } else {
                     const int append_result = append_lexem(lexer, (char)character);
                     if (!append_result) {
-                        state = SCAN_ERROR;
+                        return LEXER_INTERNAL_ERROR;
                     }
                 }
             }
@@ -403,7 +431,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                     escaped_character = '\t';
                 const int append_result = append_lexem(lexer, escaped_character);
                 if (!append_result)
-                    state = SCAN_ERROR;
+                    return LEXER_INTERNAL_ERROR;
                 else {
                     state = SCAN_STRING;
                 }
@@ -542,6 +570,54 @@ static LexerResult finish_number(Lexer *lexer, Token *token, const size_t line,
         return LEXER_INTERNAL_ERROR;
     }
     return LEXER_OK;
+}
+
+/** @brief Načte text mezi trojitými uvozovkami a uloží ho do tokenu.
+ * @param[in,out] lexer Stav lexeru a buffer pro načítaný text.
+ * @param[out] token Uložený řetězec bez trojitých uvozovek.
+ * @param[in] line Řádek první uvozovky.
+ * @param[in] column Sloupec první uvozovky.
+ * @retval LEXER_OK Řetězec se načetl celý.
+ * @retval LEXER_ERROR Vstup skončil před uzavíracími uvozovkami.
+ * @retval LEXER_INTERNAL_ERROR Nepodařilo se číst nebo alokovat paměť
+ */
+static LexerResult read_multiline_string(Lexer *lexer, Token *token, const size_t line,
+                                         const size_t column) {
+    size_t quotes = 0;
+    while (1) {
+        int character;
+        const int read_result = read_char(lexer, &character);
+        if (!read_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        if (character == EOF) {
+            return LEXER_ERROR;
+        }
+        if (character == '"') {
+            quotes++;
+            if (quotes == 3) {
+                const int set_result =
+                    set_token(token, TOK_STRING_LITERAL, (TokenData){0}, lexer->lexem,
+                              lexer->lexem_length, line, column, lexer->line, lexer->column);
+                if (!set_result) {
+                    return LEXER_INTERNAL_ERROR;
+                }
+                return LEXER_OK;
+            }
+            continue;
+        }
+        for (size_t i = 0; i < quotes; ++i) {
+            const int append_result = append_lexem(lexer, '"');
+            if (!append_result) {
+                return LEXER_INTERNAL_ERROR;
+            }
+        }
+        quotes = 0;
+        const int append_result = append_lexem(lexer, (char)character);
+        if (!append_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+    }
 }
 
 /** @brief Načte znak a posune pozici lexeru.
