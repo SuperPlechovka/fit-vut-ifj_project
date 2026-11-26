@@ -129,11 +129,17 @@ class InfrastructureTests(unittest.TestCase):
         self.assertNotEqual(run.returncode, 0)
         self.assertIn(b'Chybi zdroje', run.stderr)
 
-    def test_empty_test_suites_fail(self):
+    def test_empty_unit_suite_fails(self):
         with self.assertRaisesRegex(ValueError, 'unit'):
             dev.unit()
-        with self.assertRaisesRegex(ValueError, 'systémové'):
-            dev.system()
+
+    def test_empty_system_suite_is_skipped(self):
+        for compile_only in (False, True):
+            with self.subTest(compile_only=compile_only):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    dev.system(compile_only=compile_only)
+                self.assertIn('přeskakuji', output.getvalue())
 
     def test_system_uses_runtime_input_and_compares_exact_bytes(self):
         self.fake_programs()

@@ -30,3 +30,10 @@
 /src/insidecodegene.c       @LoafOFBreadCat
 /src/insidecodegene.h       @LoafOFBreadCat
 /tests/unit/test_codegen.c  @LoafOFBreadCat
+
+# Lexer, tokeny a jejich testy.
+/src/lexer.h                   @SuperPlechovka
+/src/lexer.c                   @SuperPlechovka
+/src/token.h                   @SuperPlechovka
+/src/token.c                   @SuperPlechovka
+/tests/unit/test_lexer_*.c      @SuperPlechovka
