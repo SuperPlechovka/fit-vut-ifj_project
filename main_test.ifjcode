@@ -1,0 +1,14 @@
+.IFJcode26
+DEFVAR GF@$retval
+MOVE GF@$retval nil@nil
+JUMP $main
+LABEL $main
+DEFVAR GF@x
+DEFVAR GF@y
+DEFVAR GF@$t0
+MOVE GF@x int@5
+MOVE GF@y int@10
+ADD GF@$t0 GF@x GF@y
+MOVE GF@x GF@$t0
+WRITE GF@x
+EXIT int@0
