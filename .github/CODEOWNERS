@@ -21,3 +21,10 @@
 /.editorconfig  @SuperPlechovka
 /.gitattributes @SuperPlechovka
 /.gitignore     @SuperPlechovka
+
+# Lexer, tokeny a jejich testy.
+/src/lexer.h                   @SuperPlechovka
+/src/lexer.c                   @SuperPlechovka
+/src/token.h                   @SuperPlechovka
+/src/token.c                   @SuperPlechovka
+/tests/unit/test_lexer_*.c      @SuperPlechovka

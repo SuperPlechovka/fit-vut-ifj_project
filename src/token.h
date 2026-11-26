@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/** @brief Druhy tokenů. */
 typedef enum token_type {
     TOK_IDENTIFIER,
     TOK_INT_LITERAL,
@@ -57,29 +58,31 @@ typedef enum token_type {
     TOK_EOF
 } TokenType;
 
+/** @brief Unie hodnot tokenu podle jeho druhu. */
 typedef union token_data {
-    int64_t num_int_val;
-    double num_float_val;
-    char *text;
+    int64_t num_int_val;  /**< Hodnota celočíselného literálu. */
+    double num_float_val; /**< Hodnota desetinného literálu. */
+    char *text;           /**< Vlastněný text identifikátoru nebo řetězce. */
 } TokenData;
 
+/** @brief Struktura tokenu s hodnotou a pozicí ve vstupu. */
 typedef struct token {
-    TokenType type;
-    TokenData data;
-    size_t text_length;
-    size_t line;
-    size_t column;
-    size_t end_line;
-    size_t end_column;
+    TokenType type;     /**< Druh tokenu. */
+    TokenData data;     /**< Hodnota tokenu. */
+    size_t text_length; /**< Délka textu bez ukončovací nuly. */
+    size_t line;        /**< Počáteční řádek. */
+    size_t column;      /**< Počáteční sloupec. */
+    size_t end_line;    /**< Koncový řádek. */
+    size_t end_column;  /**< Koncový sloupec. */
 } Token;
 
 /** @brief Inicializuje nový token.
- * @param[out] token Nový token.
+ * @param[out] token Nový token, případně NULL.
  */
 void token_init(Token *token);
 
 /** @brief Uvolní vlastněný text a resetuje token.
- * @param[in,out] token Inicializovaný token.
+ * @param[in,out] token Inicializovaný token, případně NULL.
  */
 void token_free(Token *token);
 
