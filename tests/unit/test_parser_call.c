@@ -228,21 +228,23 @@ static void test_unit_argument(void) {
     expect_error("f(() ())", ERR_SYNTAX);
 }
 
-/* Koncová čárka (spec 1.2): jen když ) následuje až na dalším řádku.
- * Vyžaduje lexer, který uvnitř závorek neposílá NEWLINE (feature/lexer od 4956f0b). */
+/* Koncová čárka (spec 1.2): jen když ) následuje až na dalším řádku. */
 static void test_trailing_comma(void) {
-    expect_tree("f(a,\n)", "f(a)", TOK_EOF);
-    expect_tree("f(a, b,\n)", "f(a, b)", TOK_EOF);
-    expect_tree("f(\n    a,\n    b,\n)", "f(a, b)", TOK_EOF);
-    expect_tree("f(a, // komentar\n)", "f(a)", TOK_EOF);
-    expect_tree("f((),\n)", "f(())", TOK_EOF);
+    /* pokračovací řádek uvnitř závorek musí být odsazen víc než začátek logického řádku */
+    expect_tree("f(a,\n    )", "f(a)", TOK_EOF);
+    expect_tree("f(a, b,\n    )", "f(a, b)", TOK_EOF);
+    expect_tree("f(\n    a,\n    b,\n    )", "f(a, b)", TOK_EOF);
+    expect_tree("f(a, // komentar\n    )", "f(a)", TOK_EOF);
+    expect_tree("f((),\n    )", "f(())", TOK_EOF);
 
     /* ) na stejném řádku jako čárka - chyba (viz i test_errors: f(a,)) */
     expect_error("f(a, )", ERR_SYNTAX);
     /* koncová čárka jen za neprázdným seznamem a jen jedna */
-    expect_error("f(,\n)", ERR_SYNTAX);
-    expect_error("f(a,,\n)", ERR_SYNTAX);
-    expect_error("f(a,\n,\n)", ERR_SYNTAX);
+    expect_error("f(,\n    )", ERR_SYNTAX);
+    expect_error("f(a,,\n    )", ERR_SYNTAX);
+    expect_error("f(a,\n    ,\n    )", ERR_SYNTAX);
+    /* neodsazená ) - chyba odsazení uvnitř závorek (spec 1.2) = lexikální */
+    expect_error("f(a,\n)", ERR_LEXICAL);
 }
 
 /* Po lexikální chybě za vytvořeným termem se uzel musí uvolnit (ASan hlásí únik). */
