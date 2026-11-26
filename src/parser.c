@@ -170,24 +170,6 @@ Node *tokenToNode(const Parser *parser) {
     return n;
 }
 
-static bool isTerm(TokenType type) {
-    return type == TOK_INT_LITERAL || type == TOK_STRING_LITERAL || type == TOK_DOUBLE_LITERAL ||
-           type == TOK_IDENTIFIER;
-}
-
-static ErrorCode parseTerm(Parser *parser, ParseError *error, Node **out) {
-    if (!isTerm(parser->current.type)) {
-        return setParserError(error, ERR_SYNTAX, &parser->current, "expected term");
-    }
-
-    *out = tokenToNode(parser);
-    if (*out == NULL) {
-        return setParserError(error, ERR_INTERNAL, &parser->current, "out of memory");
-    }
-
-    return parserAdvance(parser, error);
-}
-
 typedef ErrorCode (*ItemParser)(Parser *parser, ParseError *error, Node **out);
 
 static ErrorCode parseCommaList(Parser *parser, ParseError *error, ItemParser parseItem,
@@ -224,10 +206,10 @@ static ErrorCode parseArgs(Parser *parser, ParseError *error, Node **args) {
     // 48. <args>            -> eps
     // 49. <args_tail>       -> , <term> <args_tail>
     // 50. <args_tail>       -> eps
-    return parseCommaList(parser, error, parseTerm, args);
+    return parseCommaList(parser, error, parseExpression, args);
 }
 
-static ErrorCode parseCall(Parser *parser, ParseError *error, Node **result) {
+ErrorCode parseCall(Parser *parser, ParseError *error, Node **result) {
     Node *call = nodeCall(parser->current.data.text, NULL);
 
     if (call == NULL) {
@@ -263,12 +245,7 @@ ErrorCode parseExprOrCall(Parser *parser, ParseError *error, Node **result) {
         return setParserError(error, ERR_INTERNAL, NULL, "invalid parseExprOrCall arguments");
     }
 
-    // ensure caller is not freeing random address
     *result = NULL;
-
-    if (isTokenTypeEqual(parser, TOK_IDENTIFIER) && parser->lookahead.type == TOK_LPAREN) {
-        return parseCall(parser, error, result);
-    }
     return parseExpression(parser, error, result);
 }
 
@@ -493,13 +470,19 @@ static ErrorCode parseStatementSeparator(Parser *parser, ParseError *error) {
     // 31. <stmt_sep>        -> ; <nl_opt>
 
     if (isTokenTypeEqual(parser, TOK_NEWLINE)) {
-        return parserAdvance(parser, error);
+        while (isTokenTypeEqual(parser, TOK_NEWLINE)) {
+            ErrorCode code = parserAdvance(parser, error);
+            if (code != ERR_OK) {
+                return code;
+            }
+        }
+        return ERR_OK;
     }
 
     if (isTokenTypeEqual(parser, TOK_SEMICOLON)) {
         ErrorCode code = parserAdvance(parser, error);
 
-        if (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        while (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
             code = parserAdvance(parser, error);
         }
         return code;
@@ -574,6 +557,10 @@ ErrorCode parseBlock(Parser *parser, ParseError *error, Node **result) {
     *result = NULL;
 
     ErrorCode code = expect(parser, TOK_NEWLINE, error);
+    while (code == ERR_OK && isTokenTypeEqual(parser, TOK_NEWLINE)) {
+        code = parserAdvance(parser, error);
+    }
+
     if (code == ERR_OK) {
         code = expect(parser, TOK_INDENT, error);
     }
