@@ -40,7 +40,7 @@ int nodeStackPush(NodeStack *stack, Node *node) {
 }
 
 int nodeStackPop(NodeStack *stack, Node **result) {
-    if (stack == NULL || result == NULL || stack->size <= 0) {
+    if (stack == NULL || result == NULL || stack->size == 0) {
         return EXIT_FAILURE;
     }
 
@@ -60,7 +60,7 @@ int nodeStackPeek(const NodeStack *stack, Node **result) {
     return EXIT_SUCCESS;
 }
 
-bool nodeStackIsEmpty(NodeStack *stack) { return stack->size == 0; }
+bool nodeStackIsEmpty(const NodeStack *stack) { return stack->size == 0; }
 
 void nodeStackDestroy(NodeStack *stack) {
     for (size_t i = 0; i < stack->size; i++) {

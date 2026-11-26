@@ -45,7 +45,7 @@ int precedenceStackInit(PrecedenceStack *stack);
 int precedenceStackPush(PrecedenceStack *stack, PrecedenceSymbol symbol);
 int precedenceStackPop(PrecedenceStack *stack, PrecedenceSymbol *result);
 int precedenceStackPeek(const PrecedenceStack *stack, PrecedenceSymbol *result);
-bool precedenceStackIsEmpty(PrecedenceStack *stack);
+bool precedenceStackIsEmpty(const PrecedenceStack *stack);
 void precedenceStackDestroy(PrecedenceStack *stack);
 PrecedenceSymbol tokenToPrecSymbol(TokenType kind);
 

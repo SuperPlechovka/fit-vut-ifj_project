@@ -1021,4 +1021,3 @@ static int set_token(Token *token, const TokenType type, const TokenData data, c
     token->text_length = text_length;
     return 1;
 }
-
