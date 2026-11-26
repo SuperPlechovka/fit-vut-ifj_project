@@ -1,5 +1,5 @@
 /**
- * @file codegen.h
+ * @file insidecodegen.h
  * @brief Generátor cílového kódu IFJcode26 z abstraktního syntaktického stromu (AST).
  * @details Projekt: Implementace překladače IFJ26 (IFJ/IAL 2026/2027).
  *          Tento soubor poskytuje rozhraní pro překlad celého programu reprezentovaného
