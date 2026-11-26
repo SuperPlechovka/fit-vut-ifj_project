@@ -325,7 +325,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
             if (is_identifier_character(character)) {
                 const int append_result = append_lexem(lexer, (char)character);
                 if (!append_result)
-                    state = SCAN_ERROR;
+                    return LEXER_INTERNAL_ERROR;
             } else {
                 unread_char(lexer, character);
                 if (lexer->lexem_length == 1 && lexer->lexem[0] == '_') {
@@ -343,7 +343,7 @@ LexerResult next_token(Lexer *lexer, Token *token) {
                                   token_column, token_line, token_column + lexer->lexem_length);
                 }
                 if (!set_token_ok) {
-                    state = SCAN_ERROR;
+                    return LEXER_INTERNAL_ERROR;
                 } else {
                     state = SCAN_DONE;
                 }
