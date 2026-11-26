@@ -19,13 +19,13 @@ void gen_header(void);
  * @param[in] symb Cieľová premenná.
  * @param[in] val Zdrojová premenná alebo konštanta.
  */
-void gen_move(char *symb, char *val);
+void gen_move(const char *symb, const char *val);
 
 /**
  * @brief Definuje novú premennú v danom rámci.
  * @param[in] var Názov premennej vrátane rámca.
  */
-void gen_defvar(char *var);
+void gen_defvar(const char *var);
 
 /**
  * @brief Vytvorí nový dočasný rámec.
@@ -46,7 +46,7 @@ void gen_popframe(void);
  * @brief Zavolá funkciu na danom návestí.
  * @param[in] label Názov návestia funkcie.
  */
-void gen_call(char *label);
+void gen_call(const char *label);
 
 /**
  * @brief Návrat z funkcie.
@@ -58,13 +58,13 @@ void gen_return(void);
  * @param[in] var Cieľová premenná.
  * @param[in] type Typ načítavanej hodnoty.
  */
-void gen_read(char *var, char *type);
+void gen_read(const char *var, const char *type);
 
 /**
  * @brief Vypíše hodnotu na štandardný výstup.
  * @param[in] symb Premenná alebo konštanta na vypísanie.
  */
-void gen_write(char *symb);
+void gen_write(const char *symb);
 
 /**
  * @brief Sčíta dva symboly a uloží výsledok.
@@ -72,7 +72,7 @@ void gen_write(char *symb);
  * @param[in] symb1 Prvý sčítanec.
  * @param[in] symb2 Druhý sčítanec.
  */
-void gen_add(char *var, char *symb1, char *symb2);
+void gen_add(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Odčíta druhý symbol od prvého.
@@ -80,7 +80,7 @@ void gen_add(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Menšenec.
  * @param[in] symb2 Menšiteľ.
  */
-void gen_sub(char *var, char *symb1, char *symb2);
+void gen_sub(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Vynásobí dva symboly.
@@ -88,7 +88,7 @@ void gen_sub(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Prvý činiteľ.
  * @param[in] symb2 Druhý činiteľ.
  */
-void gen_mul(char *var, char *symb1, char *symb2);
+void gen_mul(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Vydelí dva desatinné symboly.
@@ -96,7 +96,7 @@ void gen_mul(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Delenec.
  * @param[in] symb2 Deliteľ.
  */
-void gen_div(char *var, char *symb1, char *symb2);
+void gen_div(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Celočíselne vydelí dva symboly.
@@ -104,7 +104,7 @@ void gen_div(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Delenec.
  * @param[in] symb2 Deliteľ.
  */
-void gen_idiv(char *var, char *symb1, char *symb2);
+void gen_idiv(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Porovná, či je prvý symbol menší ako druhý.
@@ -112,7 +112,7 @@ void gen_idiv(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Prvý porovnávaný symbol.
  * @param[in] symb2 Druhý porovnávaný symbol.
  */
-void gen_lt(char *var, char *symb1, char *symb2);
+void gen_lt(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Porovná, či je prvý symbol väčší ako druhý.
@@ -120,7 +120,7 @@ void gen_lt(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Prvý porovnávaný symbol.
  * @param[in] symb2 Druhý porovnávaný symbol.
  */
-void gen_gt(char *var, char *symb1, char *symb2);
+void gen_gt(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Porovná rovnosť dvoch symbolov.
@@ -128,13 +128,13 @@ void gen_gt(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Prvý porovnávaný symbol.
  * @param[in] symb2 Druhý porovnávaný symbol.
  */
-void gen_eq(char *var, char *symb1, char *symb2);
+void gen_eq(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Definuje návestie v kóde.
  * @param[in] label Názov návestia.
  */
-void gen_label(char *label);
+void gen_label(const char *label);
 
 /**
  * @brief Podmienený skok pri rovnosti.
@@ -142,7 +142,7 @@ void gen_label(char *label);
  * @param[in] symb1 Prvý porovnávaný symbol.
  * @param[in] symb2 Druhý porovnávaný symbol.
  */
-void gen_jumpifeq(char *label, char *symb1, char *symb2);
+void gen_jumpifeq(const char *label, const char *symb1, const char *symb2);
 
 /**
  * @brief Podmienený skok pri nerovnosti.
@@ -150,20 +150,20 @@ void gen_jumpifeq(char *label, char *symb1, char *symb2);
  * @param[in] symb1 Prvý porovnávaný symbol.
  * @param[in] symb2 Druhý porovnávaný symbol.
  */
-void gen_jumpifneq(char *label, char *symb1, char *symb2);
+void gen_jumpifneq(const char *label, const char *symb1, const char *symb2);
 
 /**
  * @brief Nepodmienený skok na návestie.
  * @param[in] label Cieľové návestie.
  */
-void gen_jump(char *label);
+void gen_jump(const char *label);
 
 /**
  * @brief Zistí dĺžku reťazca.
  * @param[in] var Cieľová premenná pre uloženie dĺžky.
  * @param[in] symb Reťazcový symbol.
  */
-void gen_strlen(char *var, char *symb);
+void gen_strlen(const char *var, const char *symb);
 
 /**
  * @brief Získa znak z reťazca na danom indexe.
@@ -171,7 +171,7 @@ void gen_strlen(char *var, char *symb);
  * @param[in] symb1 Zdrojový reťazec.
  * @param[in] symb2 Index znaku.
  */
-void gen_getchar(char *var, char *symb1, char *symb2);
+void gen_getchar(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Zmení znak v reťazci na danom indexe.
@@ -179,14 +179,14 @@ void gen_getchar(char *var, char *symb1, char *symb2);
  * @param[in] symb1 Index znaku.
  * @param[in] symb2 Nový znak.
  */
-void gen_setchar(char *var, char *symb1, char *symb2);
+void gen_setchar(const char *var, const char *symb1, const char *symb2);
 
 /**
  * @brief Zistí dynamický typ symbolu.
  * @param[in] var Cieľová premenná pre názov typu.
  * @param[in] symb Skúmaný symbol.
  */
-void gen_type(char *var, char *symb);
+void gen_type(const char *var, const char *symb);
 
 /**
  * @brief Vypíše celočíselnú konštantu vo formáte int@hodnota.
