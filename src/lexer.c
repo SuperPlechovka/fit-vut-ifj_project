@@ -410,8 +410,21 @@ static int read_char(Lexer *lexer, int *character) {
 }
 
 static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first_character) {
+
     size_t indent = 0;
     int character;
+
+    if (lexer->pending_dedents > 0) {
+        unread_char(lexer, first_character);
+        lexer->pending_dedents--;
+        lexer->at_line_start = (lexer->pending_dedents > 0) ? 1 : 0;
+        const int set_result =
+            set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, 1);
+        if (!set_result) {
+            return LEXER_INTERNAL_ERROR;
+        }
+        return LEXER_OK;
+    }
 
     if (first_character == '\t') {
         return LEXER_ERROR;
@@ -461,7 +474,7 @@ static LexerResult handle_line_start(Lexer *lexer, Token *token, const int first
     }
     if (lexer->pending_dedents > 0) {
         lexer->pending_dedents--;
-        lexer->at_line_start = 1;
+        lexer->at_line_start = (lexer->pending_dedents > 0) ? 1 : 0;
         const int set_result =
             set_token(token, TOK_DEDENT, (TokenData){0}, NULL, 0, lexer->line, 1, lexer->line, 1);
         if (!set_result) {
