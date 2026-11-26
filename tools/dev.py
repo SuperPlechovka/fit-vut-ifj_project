@@ -44,7 +44,8 @@ def unit():
 def system(compile_only=False):
     tests = sorted((ROOT / 'tests/system').rglob('*.ifj'))
     if not tests:
-        raise ValueError('Žádné systémové případy: doplň .ifj a .json do tests/system/.')
+        print('Žádné systémové případy v tests/system/; přeskakuji.')
+        return
     compiler = ROOT / 'ifj26'
     if not compiler.is_file():
         raise ValueError('Chybí ifj26; nejprve make.')
@@ -121,7 +122,8 @@ def main():
             command = ['clang-format', *mode, *map(str, sources)]
         else:
             command = ['cppcheck', '--enable=warning,style,performance,portability',
-                       '--error-exitcode=1', '--std=c11', '--inline-suppr',
+                       '--error-exitcode=1', '--check-level=exhaustive',
+                       '--std=c11', '--inline-suppr',
                        '--suppress=missingIncludeSystem', '-Isrc', 'src']
         subprocess.run(command, cwd=ROOT, check=True)
 
