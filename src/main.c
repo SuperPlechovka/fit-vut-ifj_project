@@ -21,7 +21,7 @@ int main(void) {
     Node *program = NULL;
     ListOfInstr instructions;
     int code = ERR_OK;
-    char *code_phase = "lexer initialization";
+    const char *code_phase = "lexer initialization";
 
     listInit(&instructions);
 
@@ -49,7 +49,9 @@ int main(void) {
 
     if (code == ERR_OK) {
         code_phase = "intermediate code generation";
-        code = codegenProgram(program, &instructions);
+        if (codegenProgram(program, &instructions) != 0) {
+            code = ERR_INTERNAL;
+        }
     }
 
     if (code == ERR_OK) {
