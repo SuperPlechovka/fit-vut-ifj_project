@@ -3,37 +3,66 @@
 # Všichni uvedení musí mít právo Write do repozitáře.
 
 # Vedoucí týmu — výchozí vlastník všech souborů.
-* @SuperPlechovka
+*                                    @SuperPlechovka
 
-# Další členové — nahraď účty a odkomentuj podle rozdělení práce.
-# /src/    @SuperPlechovka @GITHUB_LOGIN_2
-# /tests/  @SuperPlechovka @GITHUB_LOGIN_3
-# /docs/   @SuperPlechovka @GITHUB_LOGIN_4
+# Výchozí vlastník zdrojů a testů; konkrétní moduly jsou uvedené níže.
+/src/                                @SuperPlechovka
+/tests/                              @SuperPlechovka
 
 # Správa repozitáře a vývojového prostředí.
-/.github/       @SuperPlechovka
-/tools/         @SuperPlechovka
-/Makefile       @SuperPlechovka
-/Dockerfile     @SuperPlechovka
-/compose.yaml   @SuperPlechovka
-/Doxyfile       @SuperPlechovka
-/.clang-format  @SuperPlechovka
-/.editorconfig  @SuperPlechovka
-/.gitattributes @SuperPlechovka
-/.gitignore     @SuperPlechovka
+/.github/                            @SuperPlechovka
+/tools/                              @SuperPlechovka
+/Makefile                            @SuperPlechovka
+/Dockerfile                          @SuperPlechovka
+/compose.yaml                        @SuperPlechovka
+/Doxyfile                            @SuperPlechovka
+/.clang-format                       @SuperPlechovka
+/.editorconfig                       @SuperPlechovka
+/.gitattributes                      @SuperPlechovka
+/.gitignore                          @SuperPlechovka
 
 # AST, instrukční seznam a generování vnitřního kódu.
-/src/ast.c                  @LoafOFBreadCat
-/src/ast.h                  @LoafOFBreadCat
-/src/ilist.c                @LoafOFBreadCat
-/src/ilist.h                @LoafOFBreadCat
-/src/insidecodegene.c       @LoafOFBreadCat
-/src/insidecodegene.h       @LoafOFBreadCat
-/tests/unit/test_codegen.c  @LoafOFBreadCat
+/src/ast.c                           @LoafOFBreadCat
+/src/ast.h                           @LoafOFBreadCat
+/src/ilist.c                         @LoafOFBreadCat
+/src/ilist.h                         @LoafOFBreadCat
+/src/insidecodegene.c                @LoafOFBreadCat
+/src/insidecodegene.h                @LoafOFBreadCat
+/tests/unit/test_codegen.c           @LoafOFBreadCat
 
-# Lexer, tokeny a jejich testy.
-/src/lexer.h                   @SuperPlechovka
-/src/lexer.c                   @SuperPlechovka
-/src/token.h                   @SuperPlechovka
-/src/token.c                   @SuperPlechovka
-/tests/unit/test_lexer_*.c      @SuperPlechovka
+# Hlavní program, lexer, tokeny a tabulka symbolů.
+/src/main.c                          @SuperPlechovka
+/src/lexer.h                         @SuperPlechovka
+/src/lexer.c                         @SuperPlechovka
+/src/token.h                         @SuperPlechovka
+/src/token.c                         @SuperPlechovka
+/src/symtable.h                      @SuperPlechovka
+/src/symtable.c                      @SuperPlechovka
+/tests/unit/test_lexer_*.c           @SuperPlechovka
+/tests/unit/test_symtable*.c         @SuperPlechovka
+
+# Parser, výrazy, sémantická analýza a jejich testy.
+/src/parser.c                        @Fandaxd
+/src/parser.h                        @Fandaxd
+/src/expression_parser.c             @Fandaxd
+/src/expression_parser.h             @Fandaxd
+/src/node_stack.c                    @Fandaxd
+/src/node_stack.h                    @Fandaxd
+/src/precedence_stack.c              @Fandaxd
+/src/precedence_stack.h              @Fandaxd
+/src/semantic_analysis.c             @Fandaxd
+/src/semantic_analysis.h             @Fandaxd
+/src/error.h                         @Fandaxd
+/tests/unit/test_parser_*.c          @Fandaxd
+/tests/unit/test_semantic_*.c        @Fandaxd
+/tests/unit/test_node_stack.c        @Fandaxd
+/tests/unit/test_precedence_stack.c  @Fandaxd
+
+# Generování cílového kódu a jeho testy.
+/src/codegen.c                       @somor05
+/src/codegen.h                       @somor05
+/tests/unit/test_codegen_target.c    @somor05
+
+# Systémové testy celého překladače.
+/tests/system/                       @SuperPlechovka
+/tests/system/spec/                  @Fandaxd
