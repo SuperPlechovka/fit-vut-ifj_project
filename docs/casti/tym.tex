@@ -1,0 +1,12 @@
+\section{Rozdělení práce a spolupráce}
+
+\begin{itemize}
+  \item \textbf{Jan Křepinský} implementoval lexer, modul pro správu tokenů a tabulku symbolů, propojil moduly překladače a připravil vývojové prostředí.
+  \item \textbf{František Fiala} implementoval syntaktickou, precedenční a sémantickou analýzu a připravil jejich testy.
+  \item \textbf{Magdaléna Somorovská} implementovala generátor cílového kódu IFJcode26 a testy jeho výstupu.
+  \item \textbf{Vojtěch Matěj} vytvořil datové struktury AST a seznamu instrukcí, implementoval generování vnitřního kódu a rozšíření \texttt{FUNEXP} včetně jeho testů.
+\end{itemize}
+
+Na jednotlivých úkolech jsme pracovali v samostatných větvích. Změny jsme do hlavní větve začleňovali přes pull requesty. Před mergem projde CI, mají být vyřešené připomínky z review a změnu má schválit alespoň jeden další člen týmu.
+
+Kód formátujeme nástrojem \texttt{clang-format}. Vycházíme ze stylu LLVM, používáme odsazení o čtyři mezery a limit 100 znaků na řádek.
