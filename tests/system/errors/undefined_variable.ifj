@@ -1,0 +1,4 @@
+// AI prompt: Over pouziti nezname promenne. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  print(missing)

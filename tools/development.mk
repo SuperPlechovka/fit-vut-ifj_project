@@ -1,7 +1,7 @@
 # IFJ26 — vývojové cíle, nejsou potřeba v odevzdání.
 # AI prompt: tady jsou materiály k projektu z IFJ. chci aby jsi použil šablonu a upravil ji tak, aby byla ready na tento projekt. nechci v ní nic zbytečně navíc
 PYTHON ?= python3
-IC26INT ?= ic26int
+IC26INT ?= $(CURDIR)/tools/ic26int
 TEAM_SIZE ?= 4
 export IC26INT
 

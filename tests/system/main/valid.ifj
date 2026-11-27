@@ -1,0 +1,6 @@
+import ifj26.*
+def twice(n: Int): Int = n + n
+// AI prompt: Over volani funkce a vypis vysledku bez FUNEXP. Model: GPT-6, Codex.
+@main def run(): Unit =
+  val result = twice(21)
+  print(result)

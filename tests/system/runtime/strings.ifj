@@ -1,0 +1,8 @@
+// AI prompt: Over escape sekvence a doslovny obsah vice radku. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val text = """A
+/* raw */\n"""
+  print(text)
+  print("")
+  print("|\t\"\\\r\n")

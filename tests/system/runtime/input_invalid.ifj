@@ -1,0 +1,11 @@
+// AI prompt: Over nulu pri podtrzitku v Int a neplatnem Double. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val number = readInt()
+  val decimal = readDouble()
+  print(number)
+  print("|")
+  if decimal == 0.0 then
+    print("0")
+  else
+    print("BAD")

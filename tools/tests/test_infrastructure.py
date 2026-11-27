@@ -133,13 +133,45 @@ class InfrastructureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unit'):
             dev.unit()
 
-    def test_empty_system_suite_is_skipped(self):
+    # AI prompt: Ověř odmítnutí prázdné sady a výstupní proudy při chybě překladu.
+    # Model: GPT-6, Codex.
+    def test_empty_system_suite_fails(self):
         for compile_only in (False, True):
             with self.subTest(compile_only=compile_only):
-                output = io.StringIO()
-                with contextlib.redirect_stdout(output):
+                with self.assertRaisesRegex(ValueError, 'Žádné systémové případy'):
                     dev.system(compile_only=compile_only)
-                self.assertIn('přeskakuji', output.getvalue())
+
+    def test_compiler_error_must_have_empty_stdout(self):
+        self.fake_programs()
+        self.write('tests/system/basic.json', '{"compiler_exit": 1}')
+        result = subprocess.CompletedProcess(['ifj26'], 1, b'bad output', b'error\n')
+        for compile_only in (False, True):
+            with self.subTest(compile_only=compile_only):
+                with patch.object(dev.subprocess, 'run', return_value=result):
+                    with self.assertRaisesRegex(ValueError, 'stdout'):
+                        dev.system(compile_only=compile_only)
+
+    def test_compiler_error_must_have_diagnostic(self):
+        self.fake_programs()
+        self.write('tests/system/basic.json', '{"compiler_exit": 1}')
+        for diagnostic in (b'', b' \n\t'):
+            for compile_only in (False, True):
+                with self.subTest(diagnostic=diagnostic, compile_only=compile_only):
+                    result = subprocess.CompletedProcess(['ifj26'], 1, b'', diagnostic)
+                    with patch.object(dev.subprocess, 'run', return_value=result):
+                        with self.assertRaisesRegex(ValueError, 'stderr'):
+                            dev.system(compile_only=compile_only)
+
+    def test_compiler_error_does_not_run_interpreter(self):
+        self.fake_programs()
+        self.write('tests/system/error.ifj', '$\n')
+        self.write('tests/system/error.json', '{"compiler_exit": 99}')
+        results = [subprocess.CompletedProcess(['ifj26'], 0, b'.IFJcode26\n', b''),
+                   subprocess.CompletedProcess(['interpreter'], 0, b'ok\n', b''),
+                   subprocess.CompletedProcess(['ifj26'], 99, b'', b'internal error\n')]
+        with patch.object(dev.subprocess, 'run', side_effect=results) as run:
+            dev.system()
+        self.assertEqual(run.call_count, 3)
 
     def test_system_uses_runtime_input_and_compares_exact_bytes(self):
         self.fake_programs()

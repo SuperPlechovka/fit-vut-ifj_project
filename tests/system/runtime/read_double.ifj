@@ -1,0 +1,6 @@
+// AI prompt: Over samostatne cteni Double a jeho prevod. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = readDouble()
+  val text = toStr(value)
+  print(text)

@@ -1,0 +1,5 @@
+// AI prompt: Over typ argumentu uzivatelske funkce. Model: GPT-6, Codex.
+import ifj26.*
+def identity(n: Int): Int = n
+@main def run(): Unit =
+  val value = identity("text")

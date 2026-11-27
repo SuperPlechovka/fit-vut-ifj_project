@@ -1,0 +1,7 @@
+// AI prompt: Over prazdny retezec pri readLine na EOF. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = readLine()
+  print("[")
+  print(value)
+  print("]")

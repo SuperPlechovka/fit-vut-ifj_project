@@ -1,0 +1,13 @@
+// AI prompt: Over readInt, readDouble a readLine ze stdin. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val number = readInt()
+  val decimal = readDouble()
+  val text = readLine()
+  val next = number + 1
+  val formatted = toStr(decimal)
+  print(next)
+  print("|")
+  print(formatted)
+  print("|")
+  print(text)

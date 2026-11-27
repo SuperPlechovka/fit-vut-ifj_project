@@ -1,0 +1,22 @@
+// AI prompt: Over vice parametru, koncovou carku a predcasny return. Model: GPT-6, Codex.
+import ifj26.*
+def choose(a: Int, b: Int): Int =
+  if a < b then
+    return b
+  else
+    return a
+
+def show(): Unit =
+  print("|ok")
+  return
+  print("BAD")
+@main def run(): Unit =
+  val larger = choose(
+    3,
+    7,
+    )
+  val smaller = choose(9, 2)
+  print(larger)
+  print("|")
+  print(smaller)
+  show()
