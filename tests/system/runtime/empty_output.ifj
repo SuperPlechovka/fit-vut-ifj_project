@@ -1,0 +1,3 @@
+// AI prompt: Over prazdny vystup uspesneho programu. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit = ()

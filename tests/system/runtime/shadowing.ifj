@@ -1,0 +1,11 @@
+// AI prompt: Over prekryti promenne a navrat do vnejsiho rozsahu. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val x = 10
+  if x > 0 then
+    val x = 20
+    print(x)
+  else
+    print("BAD")
+  print("|")
+  print(x)

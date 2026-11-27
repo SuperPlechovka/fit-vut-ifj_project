@@ -44,8 +44,7 @@ def unit():
 def system(compile_only=False):
     tests = sorted((ROOT / 'tests/system').rglob('*.ifj'))
     if not tests:
-        print('Žádné systémové případy v tests/system/; přeskakuji.')
-        return
+        raise ValueError('Žádné systémové případy: doplň .ifj a .json do tests/system/.')
     compiler = ROOT / 'ifj26'
     if not compiler.is_file():
         raise ValueError('Chybí ifj26; nejprve make.')
@@ -76,6 +75,13 @@ def system(compile_only=False):
             if result.returncode != code:
                 raise ValueError(f'{test}: překladač vrátil {result.returncode}, očekáváno {code}.\n'
                                  + result.stderr.decode(errors='replace')[:2000])
+            # AI prompt: Při chybě překladu ověř prázdný stdout a diagnostiku na stderr.
+            # Model: GPT-6, Codex.
+            if code != 0:
+                if result.stdout:
+                    raise ValueError(f'{test}: překladač při chybě zapisuje na stdout.')
+                if not result.stderr.strip():
+                    raise ValueError(f'{test}: chybí diagnostika překladače na stderr.')
             if code == 0:
                 if not result.stdout.startswith(b'.IFJcode26\n') and not result.stdout.startswith(b'.IFJcode26\r\n'):
                     raise ValueError(f'{test}: chybí úvodní řádek .IFJcode26.')
@@ -122,8 +128,7 @@ def main():
             command = ['clang-format', *mode, *map(str, sources)]
         else:
             command = ['cppcheck', '--enable=warning,style,performance,portability',
-                       '--error-exitcode=1', '--check-level=exhaustive',
-                       '--std=c11', '--inline-suppr',
+                       '--error-exitcode=1', '--check-level=exhaustive', '--std=c11', '--inline-suppr',
                        '--suppress=missingIncludeSystem', '-Isrc', 'src']
         subprocess.run(command, cwd=ROOT, check=True)
 

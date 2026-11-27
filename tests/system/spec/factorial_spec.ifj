@@ -1,0 +1,16 @@
+// AI prompt: napis systemove testy podle prikladu ze specifikace IFJ26 (kap. 2, 5.1) a pravidel @main a FUNEXP. Model: Claude Opus 5.5, Claude Code.
+import ifj26.*
+
+def factorial(n: Int): Int =
+  var result = 1
+  var i: Int = n // uvedení typu je nepovinné
+  while i > 1 do
+    result = result * i
+    i = i - 1
+  result // poslední výraz v těle funkce určí návratovou hodnotu
+
+@main def runFoo(): Unit =
+  val n = readInt()
+  val result = factorial(n)
+  print(result)
+  print("\n")

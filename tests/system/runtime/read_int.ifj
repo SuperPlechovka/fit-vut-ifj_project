@@ -1,0 +1,5 @@
+// AI prompt: Over samostatne cteni Int. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = readInt()
+  print(value)

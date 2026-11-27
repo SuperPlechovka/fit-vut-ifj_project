@@ -1,0 +1,19 @@
+// AI prompt: Over retezce, konverze a vypis Unit. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val part = subStr("abcd", 1, 3)
+  val length = strLength(part)
+  val code = ord(part, 1)
+  val character = chr(code)
+  val decimal = toStr(12.5)
+  print(part)
+  print("|")
+  print(length)
+  print("|")
+  print(code)
+  print("|")
+  print(character)
+  print("|")
+  print(decimal)
+  print("|")
+  print(())

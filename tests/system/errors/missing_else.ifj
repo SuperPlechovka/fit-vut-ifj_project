@@ -1,0 +1,5 @@
+// AI prompt: Over povinne else v zakladnim IFJ26. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  if 1 < 2 then
+    print(1)

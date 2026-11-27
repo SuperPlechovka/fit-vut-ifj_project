@@ -1,0 +1,5 @@
+// AI prompt: Over behovou chybu pri zacatku podretezce za poslednim znakem. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = subStr("abc", 3, 3)
+  print(value)

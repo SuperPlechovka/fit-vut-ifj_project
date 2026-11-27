@@ -54,6 +54,7 @@ class InfrastructureTests(unittest.TestCase):
         shutil.copyfile(REPO / 'Makefile', self.root / 'Makefile')
         self.write('dokumentace.pdf', b'%PDF-1.4\nFixture: header check only, not a document.\n')
         self.write('rozdeleni', ''.join(f'{100 + i}:xtest{i}:25\n' for i in range(4)))
+        self.write('rozsireni', 'FUNEXP\n')
 
     def fake_programs(self, output='ok\n'):
         compiler = self.write('ifj26', '#!/bin/sh\nprintf ".IFJcode26\\n"\n')
@@ -77,7 +78,7 @@ class InfrastructureTests(unittest.TestCase):
         pack.package(self.root)
         with zipfile.ZipFile(self.root / 'dist/ifj26.zip') as archive:
             self.assertEqual(set(archive.namelist()), {
-                'Makefile', 'dokumentace.pdf', 'rozdeleni',
+                'Makefile', 'dokumentace.pdf', 'rozdeleni', 'rozsireni',
                 'src/main.c', 'src/symtable.c', 'src/symtable.h'})
             self.assertIsNone(archive.testzip())
         # The plain build already ran in isolation inside package().
@@ -94,6 +95,22 @@ class InfrastructureTests(unittest.TestCase):
                 path = self.write('rozdeleni', contents)
                 with self.assertRaises(ValueError):
                     pack.distribution(path, 4)
+
+    # AI prompt: otestuj kontrolu souboru rozsireni (platny obsah, chybejici LF, CRLF, mezery,
+    # mala pismena, duplicita, chybejici soubor). Model: Claude Opus 5.5, Claude Code.
+    def test_extensions_file(self):
+        for contents in ('FUNEXP\n', 'FUNEXP\nBOOLTHEN\n'):
+            with self.subTest(contents=contents):
+                pack.extensions(self.write('rozsireni', contents))
+        for contents in ('FUNEXP', 'FUNEXP\r\n', ' FUNEXP\n', 'funexp\n', 'FUNEXP\n\n',
+                         'FUNEXP\nFUNEXP\n'):
+            with self.subTest(contents=contents):
+                with self.assertRaises(ValueError):
+                    pack.extensions(self.write('rozsireni', contents))
+        self.fixture()
+        (self.root / 'rozsireni').unlink()
+        with self.assertRaises(ValueError):
+            pack.inputs(self.root, 4)
 
     def test_approved_three_member_distribution(self):
         path = self.write('rozdeleni', '1:xa:34\n2:xb:33\n3:xc:33\n')
@@ -133,13 +150,45 @@ class InfrastructureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unit'):
             dev.unit()
 
-    def test_empty_system_suite_is_skipped(self):
+    # AI prompt: Ověř odmítnutí prázdné sady a výstupní proudy při chybě překladu.
+    # Model: GPT-6, Codex.
+    def test_empty_system_suite_fails(self):
         for compile_only in (False, True):
             with self.subTest(compile_only=compile_only):
-                output = io.StringIO()
-                with contextlib.redirect_stdout(output):
+                with self.assertRaisesRegex(ValueError, 'Žádné systémové případy'):
                     dev.system(compile_only=compile_only)
-                self.assertIn('přeskakuji', output.getvalue())
+
+    def test_compiler_error_must_have_empty_stdout(self):
+        self.fake_programs()
+        self.write('tests/system/basic.json', '{"compiler_exit": 1}')
+        result = subprocess.CompletedProcess(['ifj26'], 1, b'bad output', b'error\n')
+        for compile_only in (False, True):
+            with self.subTest(compile_only=compile_only):
+                with patch.object(dev.subprocess, 'run', return_value=result):
+                    with self.assertRaisesRegex(ValueError, 'stdout'):
+                        dev.system(compile_only=compile_only)
+
+    def test_compiler_error_must_have_diagnostic(self):
+        self.fake_programs()
+        self.write('tests/system/basic.json', '{"compiler_exit": 1}')
+        for diagnostic in (b'', b' \n\t'):
+            for compile_only in (False, True):
+                with self.subTest(diagnostic=diagnostic, compile_only=compile_only):
+                    result = subprocess.CompletedProcess(['ifj26'], 1, b'', diagnostic)
+                    with patch.object(dev.subprocess, 'run', return_value=result):
+                        with self.assertRaisesRegex(ValueError, 'stderr'):
+                            dev.system(compile_only=compile_only)
+
+    def test_compiler_error_does_not_run_interpreter(self):
+        self.fake_programs()
+        self.write('tests/system/error.ifj', '$\n')
+        self.write('tests/system/error.json', '{"compiler_exit": 99}')
+        results = [subprocess.CompletedProcess(['ifj26'], 0, b'.IFJcode26\n', b''),
+                   subprocess.CompletedProcess(['interpreter'], 0, b'ok\n', b''),
+                   subprocess.CompletedProcess(['ifj26'], 99, b'', b'internal error\n')]
+        with patch.object(dev.subprocess, 'run', side_effect=results) as run:
+            dev.system()
+        self.assertEqual(run.call_count, 3)
 
     def test_system_uses_runtime_input_and_compares_exact_bytes(self):
         self.fake_programs()

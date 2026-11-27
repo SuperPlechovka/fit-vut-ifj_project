@@ -380,6 +380,18 @@ static int genBuiltinCall(Gen *g, const Node *n, const Operand *vals, int argc, 
         }
         idx = newTemp(g);
         emit(&g->body, I_READ, tmpOp(g, idx), opType("int"), opNone());
+
+        {
+            /* READ vrací při EOF nebo chybném vstupu nil, readInt má vrátit 0 (spec IFJ26) */
+            int ty = newTemp(g);
+            char l_ok[48];
+            snprintf(l_ok, sizeof l_ok, "$read_ok_%d", g->lbl_seq++);
+            emit(&g->body, I_TYPE, tmpOp(g, ty), tmpOp(g, idx), opNone());
+            emit(&g->body, I_JUMPIFNEQ, opLabel(l_ok), tmpOp(g, ty), opString("nil"));
+            emit(&g->body, I_MOVE, tmpOp(g, idx), opInt(0), opNone());
+            emit(&g->body, I_LABEL, opLabel(l_ok), opNone(), opNone());
+        }
+
         if (want_result)
             *out = tmpOp(g, idx);
         return 1;
@@ -393,15 +405,27 @@ static int genBuiltinCall(Gen *g, const Node *n, const Operand *vals, int argc, 
         }
         idx = newTemp(g);
         emit(&g->body, I_READ, tmpOp(g, idx), opType("float"), opNone());
+
+        {
+            /* READ vrací při EOF nebo chybném vstupu nil, readDouble má vrátit 0 (spec IFJ26) */
+            int ty = newTemp(g);
+            char l_ok[48];
+            snprintf(l_ok, sizeof l_ok, "$read_ok_%d", g->lbl_seq++);
+            emit(&g->body, I_TYPE, tmpOp(g, ty), tmpOp(g, idx), opNone());
+            emit(&g->body, I_JUMPIFNEQ, opLabel(l_ok), tmpOp(g, ty), opString("nil"));
+            emit(&g->body, I_MOVE, tmpOp(g, idx), opFloat(0.0), opNone());
+            emit(&g->body, I_LABEL, opLabel(l_ok), opNone(), opNone());
+        }
+
         if (want_result)
             *out = tmpOp(g, idx);
         return 1;
     }
 
-    if (strcmp(n->name, "readString") == 0) {
+    if (strcmp(n->name, "readLine") == 0) {
         int idx;
         if (argc != 0) {
-            fail(g, "readString nevyžaduje žádné argumenty");
+            fail(g, "readLine nevyžaduje žádné argumenty");
             return 1;
         }
         idx = newTemp(g);
@@ -461,6 +485,24 @@ static int genBuiltinCall(Gen *g, const Node *n, const Operand *vals, int argc, 
         return 1;
     }
 
+    if (strcmp(n->name, "toInt") == 0) {
+        int idx;
+
+        if (argc != 1) {
+            fail(g, "toInt vyžaduje 1 argument");
+            return 1;
+        }
+
+        idx = newTemp(g);
+        emit(&g->body, I_FLOAT2INT, tmpOp(g, idx), opDup(vals[0]), opNone());
+
+        if (want_result) {
+            *out = tmpOp(g, idx);
+        }
+
+        return 1;
+    }
+
     if (strcmp(n->name, "strLength") == 0) {
         int idx;
         if (argc != 1) {
@@ -475,8 +517,11 @@ static int genBuiltinCall(Gen *g, const Node *n, const Operand *vals, int argc, 
     }
 
     if (strcmp(n->name, "subStr") == 0) {
-        int res, len, cond, idx, cnt, ch, id;
-        char l_loop[48], l_end[48];
+        /* subStr(value, start, end): znaky [start, end); chybné meze -> běhová chyba 40.
+         * AI prompt: oprav subStr podle spec IFJ26 (end je index za poslednim znakem, chybne meze
+         * vedou na behovou chybu 40). Model: Claude Opus 5.5, Claude Code. */
+        int res, len, cond, idx, ch, id;
+        char l_loop[48], l_end[48], l_err[48], l_ok[48];
         if (argc != 3) {
             fail(g, "subStr vyžaduje 3 argumenty");
             return 1;
@@ -484,34 +529,42 @@ static int genBuiltinCall(Gen *g, const Node *n, const Operand *vals, int argc, 
         id = g->lbl_seq++;
         snprintf(l_loop, sizeof l_loop, "$substr_loop_%d", id);
         snprintf(l_end, sizeof l_end, "$substr_end_%d", id);
+        snprintf(l_err, sizeof l_err, "$substr_err_%d", id);
+        snprintf(l_ok, sizeof l_ok, "$substr_ok_%d", id);
 
         res = newTemp(g);
         len = newTemp(g);
         cond = newTemp(g);
         idx = newTemp(g);
-        cnt = newTemp(g);
         ch = newTemp(g);
 
         emit(&g->body, I_MOVE, tmpOp(g, res), opString(""), opNone());
         emit(&g->body, I_STRLEN, tmpOp(g, len), opDup(vals[0]), opNone());
+
+        /* start < 0, end < 0, start > end, start >= len, end > len */
+        emit(&g->body, I_LT, tmpOp(g, cond), opDup(vals[1]), opInt(0));
+        emit(&g->body, I_JUMPIFEQ, opLabel(l_err), tmpOp(g, cond), opBool(1));
+        emit(&g->body, I_LT, tmpOp(g, cond), opDup(vals[2]), opInt(0));
+        emit(&g->body, I_JUMPIFEQ, opLabel(l_err), tmpOp(g, cond), opBool(1));
+        emit(&g->body, I_GT, tmpOp(g, cond), opDup(vals[1]), opDup(vals[2]));
+        emit(&g->body, I_JUMPIFEQ, opLabel(l_err), tmpOp(g, cond), opBool(1));
+        emit(&g->body, I_LT, tmpOp(g, cond), opDup(vals[1]), tmpOp(g, len));
+        emit(&g->body, I_JUMPIFEQ, opLabel(l_err), tmpOp(g, cond), opBool(0));
+        emit(&g->body, I_GT, tmpOp(g, cond), opDup(vals[2]), tmpOp(g, len));
+        emit(&g->body, I_JUMPIFEQ, opLabel(l_err), tmpOp(g, cond), opBool(1));
+        emit(&g->body, I_JUMP, opLabel(l_ok), opNone(), opNone());
+
+        emit(&g->body, I_LABEL, opLabel(l_err), opNone(), opNone());
+        emit(&g->body, I_EXIT, opInt(40), opNone(), opNone());
+
+        emit(&g->body, I_LABEL, opLabel(l_ok), opNone(), opNone());
         emit(&g->body, I_MOVE, tmpOp(g, idx), opDup(vals[1]), opNone());
-        emit(&g->body, I_MOVE, tmpOp(g, cnt), opInt(0), opNone());
-
-        emit(&g->body, I_LT, tmpOp(g, cond), tmpOp(g, idx), opInt(0));
-        emit(&g->body, I_JUMPIFEQ, opLabel(l_end), tmpOp(g, cond), opBool(1));
-        emit(&g->body, I_GT, tmpOp(g, cond), opDup(vals[2]), opInt(0));
-        emit(&g->body, I_JUMPIFEQ, opLabel(l_end), tmpOp(g, cond), opBool(0));
-
         emit(&g->body, I_LABEL, opLabel(l_loop), opNone(), opNone());
-        emit(&g->body, I_LT, tmpOp(g, cond), tmpOp(g, idx), tmpOp(g, len));
+        emit(&g->body, I_LT, tmpOp(g, cond), tmpOp(g, idx), opDup(vals[2]));
         emit(&g->body, I_JUMPIFEQ, opLabel(l_end), tmpOp(g, cond), opBool(0));
-        emit(&g->body, I_LT, tmpOp(g, cond), tmpOp(g, cnt), opDup(vals[2]));
-        emit(&g->body, I_JUMPIFEQ, opLabel(l_end), tmpOp(g, cond), opBool(0));
-
         emit(&g->body, I_GETCHAR, tmpOp(g, ch), opDup(vals[0]), tmpOp(g, idx));
         emit(&g->body, I_CONCAT, tmpOp(g, res), tmpOp(g, res), tmpOp(g, ch));
         emit(&g->body, I_ADD, tmpOp(g, idx), tmpOp(g, idx), opInt(1));
-        emit(&g->body, I_ADD, tmpOp(g, cnt), tmpOp(g, cnt), opInt(1));
         emit(&g->body, I_JUMP, opLabel(l_loop), opNone(), opNone());
 
         emit(&g->body, I_LABEL, opLabel(l_end), opNone(), opNone());
@@ -904,12 +957,40 @@ static int genFunc(const Node *f, const Node *funcs, ListOfInstr *out, int *lbl_
             emit(&g.body, I_RETURN, opNone(), opNone(), opNone());
         }
     } else {
-        genList(&g, f->body);
+        /* víceřádková funkce: poslední výraz těla je implicitní návratová hodnota.
+         * AI prompt: oprav generovani tak, aby viceradkova funkce vracela hodnotu posledniho
+         * vyrazu tela (spec IFJ26 kap. 2) misto nil. Model: Claude Opus 5.5, Claude Code. */
+        const Node *last = f->body;
+        while (last != NULL && last->next != NULL) {
+            last = last->next;
+        }
+        int implicit = !f->is_main && last != NULL && isExprKind(last->kind) &&
+                       f->type != TY_UNIT && last->type != TY_UNIT;
+
+        scopeEnter(&g);
+        for (const Node *s = f->body; s != NULL && !g.err; s = s->next) {
+            if (implicit && s == last) {
+                Operand val = genExpr(&g, last);
+                if (!g.err) {
+                    TypeKind dst_ty = (f->type != TY_UNKNOWN) ? f->type : last->type;
+                    val = coerce(&g, val, last->type, dst_ty);
+                    emit(&g.body, I_MOVE, opVar(FR_GF, "$retval"), val, opNone());
+                } else {
+                    dropOp(&val);
+                }
+            } else {
+                genStmt(&g, s);
+            }
+        }
+        scopeLeave(&g);
+
         if (!g.err) {
             if (f->is_main) {
                 emit(&g.body, I_EXIT, opInt(0), opNone(), opNone());
             } else {
-                emit(&g.body, I_MOVE, opVar(FR_GF, "$retval"), opNil(), opNone());
+                if (!implicit) {
+                    emit(&g.body, I_MOVE, opVar(FR_GF, "$retval"), opNil(), opNone());
+                }
                 emit(&g.body, I_POPFRAME, opNone(), opNone(), opNone());
                 emit(&g.body, I_RETURN, opNone(), opNone(), opNone());
             }

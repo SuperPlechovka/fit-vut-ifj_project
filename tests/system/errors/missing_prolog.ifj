@@ -1,0 +1,2 @@
+// AI prompt: Over chybejici import. Model: GPT-6, Codex.
+@main def run(): Unit = ()

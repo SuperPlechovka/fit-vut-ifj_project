@@ -1,0 +1,8 @@
+// AI prompt: Over nepristupnost promenne z ukoncene vetve. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  if 1 < 2 then
+    val hidden = 1
+  else
+    ()
+  print(hidden)

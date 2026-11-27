@@ -1,0 +1,13 @@
+// AI prompt: Over rekurzi, lokalni hodnoty a volani pred definici. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val result = factorial(5)
+  print(result)
+
+def factorial(n: Int): Int =
+  if n <= 1 then
+    return 1
+  else
+    val previous = n - 1
+    val result = factorial(previous)
+    return n * result

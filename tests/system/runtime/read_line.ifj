@@ -1,0 +1,5 @@
+// AI prompt: Over zachovani LF pri cteni radku. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = readLine()
+  print(value)

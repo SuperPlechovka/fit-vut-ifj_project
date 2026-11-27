@@ -1,0 +1,5 @@
+// AI prompt: napis systemove testy podle prikladu ze specifikace IFJ26 (kap. 2, 5.1) a pravidel @main a FUNEXP. Model: Claude Opus 5.5, Claude Code.
+import ifj26.*
+
+@main def a(): Unit = ()
+@main def b(): Unit = ()

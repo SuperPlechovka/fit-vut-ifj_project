@@ -1,0 +1,19 @@
+// AI prompt: Over prioritu operatoru, zaporne cislo, exponent a Int na Double. Model: GPT-6, Codex.
+import ifj26.*
+def half(value: Double): Double = value / 2
+@main def run(): Unit =
+  val integer = (14 - 2) * 3 / 4
+  val negative = -(2 + 3)
+  val exponent = 1_2.5e+1D
+  val fraction = .5D
+  val converted = half(3)
+  val text = toStr(converted)
+  print(integer)
+  print("|")
+  print(negative)
+  print("|")
+  print(exponent)
+  print("|")
+  print(fraction)
+  print("|")
+  print(text)

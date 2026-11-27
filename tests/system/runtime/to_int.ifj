@@ -1,0 +1,5 @@
+// AI prompt: Over orezani desetinne casti pri toInt. Model: GPT-6, Codex.
+import ifj26.*
+@main def run(): Unit =
+  val value = toInt(2.75)
+  print(value)

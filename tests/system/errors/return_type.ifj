@@ -1,0 +1,5 @@
+// AI prompt: Over nespravny typ navratove hodnoty. Model: GPT-6, Codex.
+import ifj26.*
+def wrong(): Int = "text"
+@main def run(): Unit =
+  ()

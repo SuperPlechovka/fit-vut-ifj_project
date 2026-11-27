@@ -1,0 +1,12 @@
+// AI prompt: napis systemove testy podle prikladu ze specifikace IFJ26 (kap. 2, 5.1) a pravidel @main a FUNEXP. Model: Claude Opus 5.5, Claude Code.
+import ifj26.*
+
+def factorial(n: Int): Int =
+  if n < 2 then
+    return 1
+  else
+    return n * factorial(n - 1)
+
+@main def run(): Unit =
+  val result = 2 * factorial(readInt() + 1)
+  print(toStr(result + strLength(subStr("abcd", 1, 3))))
