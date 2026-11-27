@@ -54,6 +54,7 @@ class InfrastructureTests(unittest.TestCase):
         shutil.copyfile(REPO / 'Makefile', self.root / 'Makefile')
         self.write('dokumentace.pdf', b'%PDF-1.4\nFixture: header check only, not a document.\n')
         self.write('rozdeleni', ''.join(f'{100 + i}:xtest{i}:25\n' for i in range(4)))
+        self.write('rozsireni', 'FUNEXP\n')
 
     def fake_programs(self, output='ok\n'):
         compiler = self.write('ifj26', '#!/bin/sh\nprintf ".IFJcode26\\n"\n')
@@ -77,7 +78,7 @@ class InfrastructureTests(unittest.TestCase):
         pack.package(self.root)
         with zipfile.ZipFile(self.root / 'dist/ifj26.zip') as archive:
             self.assertEqual(set(archive.namelist()), {
-                'Makefile', 'dokumentace.pdf', 'rozdeleni',
+                'Makefile', 'dokumentace.pdf', 'rozdeleni', 'rozsireni',
                 'src/main.c', 'src/symtable.c', 'src/symtable.h'})
             self.assertIsNone(archive.testzip())
         # The plain build already ran in isolation inside package().
@@ -94,6 +95,22 @@ class InfrastructureTests(unittest.TestCase):
                 path = self.write('rozdeleni', contents)
                 with self.assertRaises(ValueError):
                     pack.distribution(path, 4)
+
+    # AI prompt: otestuj kontrolu souboru rozsireni (platny obsah, chybejici LF, CRLF, mezery,
+    # mala pismena, duplicita, chybejici soubor). Model: Claude Opus 5.5, Claude Code.
+    def test_extensions_file(self):
+        for contents in ('FUNEXP\n', 'FUNEXP\nBOOLTHEN\n'):
+            with self.subTest(contents=contents):
+                pack.extensions(self.write('rozsireni', contents))
+        for contents in ('FUNEXP', 'FUNEXP\r\n', ' FUNEXP\n', 'funexp\n', 'FUNEXP\n\n',
+                         'FUNEXP\nFUNEXP\n'):
+            with self.subTest(contents=contents):
+                with self.assertRaises(ValueError):
+                    pack.extensions(self.write('rozsireni', contents))
+        self.fixture()
+        (self.root / 'rozsireni').unlink()
+        with self.assertRaises(ValueError):
+            pack.inputs(self.root, 4)
 
     def test_approved_three_member_distribution(self):
         path = self.write('rozdeleni', '1:xa:34\n2:xb:33\n3:xc:33\n')

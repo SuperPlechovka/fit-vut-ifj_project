@@ -48,6 +48,23 @@ def distribution(path, team_size):
         raise ValueError('Součet podílů v rozdeleni musí být 100.')
 
 
+# AI prompt: dopln kontrolu souboru rozsireni podle zadani 6.2 (jeden identifikator na radek,
+# kazdy radek vcetne posledniho ukonceny LF, bez CRLF). Model: Claude Opus 5.5, Claude Code.
+def extensions(path):
+    raw = regular(path).read_bytes()
+    if not raw.endswith(b'\n') or b'\r' in raw:
+        raise ValueError('rozsireni musí končit LF a nesmí obsahovat CRLF.')
+    try:
+        lines = raw.decode('ascii').splitlines()
+    except UnicodeDecodeError as error:
+        raise ValueError('rozsireni musí být ASCII.') from error
+    if len(set(lines)) != len(lines):
+        raise ValueError('rozsireni: identifikátor rozšíření je uveden vícekrát.')
+    for line in lines:
+        if not re.fullmatch(r'[A-Z][A-Z0-9]*', line):
+            raise ValueError(f'rozsireni: neplatný identifikátor {line!r}; jeden na řádek, např. FUNEXP.')
+
+
 def inputs(root, team_size):
     if team_size not in {3, 4}:
         raise ValueError("Tým musí mít čtyři členy, výjimečně schválené tři.")
@@ -65,11 +82,12 @@ def inputs(root, team_size):
     for name in ('main.c', 'symtable.c', 'symtable.h'):
         if f'src/{name}' not in selected:
             raise ValueError(f'Chybí src/{name}; main.c je konvence této kostry.')
-    for name in ('Makefile', 'dokumentace.pdf', 'rozdeleni'):
+    for name in ('Makefile', 'dokumentace.pdf', 'rozdeleni', 'rozsireni'):
         selected[name] = regular(root / name)
     if not selected['dokumentace.pdf'].read_bytes().startswith(b'%PDF-'):
         raise ValueError('dokumentace.pdf nemá PDF hlavičku.')
     distribution(root / 'rozdeleni', team_size)
+    extensions(root / 'rozsireni')
     return selected
 
 
