@@ -1,0 +1,19 @@
+// AI prompt: napis systemove testy podle prikladu ze specifikace IFJ26 (kap. 2, 5.1) a pravidel @main a FUNEXP. Model: Claude Opus 5.5, Claude Code.
+import ifj26.*
+
+def sum(n: Int): Int =
+  var s = 0
+  var i = 1
+  while i <= n do
+    s = s + i
+    i = i + 1
+  s
+
+def label(x: Int): String =
+  val prefix = "x="
+  prefix + toStr(x)
+
+@main def run(): Unit =
+  print(sum(4))
+  print("|")
+  print(label(7))
