@@ -1,0 +1,24 @@
+\section{Sémantická analýza}
+\label{sec:semantika}
+\sloppy % dlouhé identifikátory v \texttt se jinak nezalomí
+% Text: František Fiala. Do LaTeXu převedeno bez změny obsahu (AI: jen sazba).
+
+Po syntaktické analýze běží nad hotovým AST analýza sémantická. Kontroluje sémantická pravidla a do uzlů doplňuje typy, které pak využívá generátor kódu.
+
+Sémantická analýza má dva průchody AST, protože funkci lze volat ještě před její definicí:
+\begin{enumerate}
+  \item průchod (\texttt{analyseFunctionHeaders}): všechny uživatelské i vestavěné funkce se vloží do tabulky funkcí s~klíčem \emph{jméno + počet parametrů}. Kontroluje se redefinice funkcí a signatura funkce \texttt{@main}.
+  \item průchod (těla funkcí): proměnné se ukládají do zásobníku tabulek symbolů, jedna tabulka na každý blok.
+\end{enumerate}
+
+Když je funkce volána dřív, než byla analyzována, je potřeba znát její návratový typ. Tělo volané funkce se proto analyzuje hned v~místě volání. Pro tuto analýzu se vytvoří kopie kontextu s~prázdným zásobníkem rozsahů platnosti, takže volaná funkce začíná s~čistou tabulkou symbolů. Jinak by proměnné volající funkce, které ve volané funkci nejsou viditelné, způsobily falešné chyby redefinice. Každá funkce má navíc stav těla (\texttt{BODY\_PENDING}, \texttt{BODY\_IN\_PROGRESS}, \texttt{BODY\_DONE}), díky kterému se každé tělo analyzuje jen jednou.
+
+Zvláštní případ je rekurze, přímá i nepřímá. Je-li volána funkce, jejíž analýza právě probíhá, nelze z~jejího těla návratový typ odvodit. K~tomu slouží \texttt{callChainStack}, zásobník právě rozpracovaných funkcí. Při takovém volání se projde řetězec funkcí, které tvoří cyklus, a každá z~nich musí mít návratový typ uvedený explicitně, jinak jde o~chybu 6.
+
+Tabulku symbolů sémantická analýza obecně využívá ke kontrole redefinic, počtu argumentů, typů apod. (viz kapitola~\ref{sec:symtable}).
+
+\paragraph{Moduly}
+\begin{itemize}
+  \item \texttt{semantic\_analysis}: jediný modul, který provádí celou sémantickou analýzu ve dvou průchodech.
+\end{itemize}
+\fussy

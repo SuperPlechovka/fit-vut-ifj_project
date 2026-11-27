@@ -1,0 +1,91 @@
+\section{LL gramatika}
+\label{app:gramatika}
+
+$G = (N, T, P, \texttt{<program>})$, kde
+\begin{itemize}\raggedright
+  \item $N = \{$\texttt{<program>}, \texttt{<prolog>}, \texttt{<funcs>}, \texttt{<func\_def>}, \texttt{<main\_opt>}, \texttt{<nl\_opt>}, \texttt{<func\_body>}, \texttt{<params>}, \texttt{<params\_tail>}, \texttt{<param>}, \texttt{<type\_opt>}, \texttt{<type>}, \texttt{<block>}, \texttt{<statements>}, \texttt{<statements\_tail>}, \texttt{<statement>}, \texttt{<stmt\_sep>}, \texttt{<simple\_stmt>}, \texttt{<var\_def>}, \texttt{<var\_kind>}, \texttt{<return>}, \texttt{<ret\_value>}, \texttt{<if>}, \texttt{<while>}, \texttt{<call>}, \texttt{<args>}, \texttt{<args\_tail>}$\}$,
+  \item $T = \{$\texttt{id}, \texttt{import}, \texttt{def}, \texttt{val}, \texttt{var}, \texttt{if}, \texttt{then}, \texttt{else}, \texttt{while}, \texttt{do}, \texttt{return}, \texttt{Int}, \texttt{Double}, \texttt{String}, \texttt{Unit}, \texttt{(}, \texttt{)}, \texttt{,}, \texttt{:}, \texttt{;}, \texttt{.}, \texttt{*}, \texttt{=}, \texttt{@}, \texttt{NEWLINE}, \texttt{INDENT}, \texttt{DEDENT}, \texttt{EOF}, \texttt{expr}$\}$,
+  \item $P$ obsahuje pravidla 1--48:
+\end{itemize}
+
+\texttt{expr} je brán jako terminál, protože jej analyzuje modul \texttt{expression\_parser.c/h} metodou precedenční analýzy. Kvůli implementaci rozšíření FUNEXP je \texttt{<call>} součástí \texttt{expr}. 
+
+Pravidla 44--48 jsou samostatná podgramatika, zpracovávaná rekurzivním sestupem, se startovním symbolem \texttt{<call>}, který je nedosažitelný z \texttt{<program>}. Volá je precedenční analýza, když je na vstupu dvojice \texttt{id} \texttt{(}. Každý argument je zase \texttt{expr}, což dovoluje modulu analyzovat i vnořená volání \texttt{f(g(x))}.
+
+\subsection*{Program a funkce}
+{\small
+\begin{tabular}{@{}r@{\hspace{0.6em}}p{9.5em}@{\hspace{0.4em}}c@{\hspace{0.4em}}l@{}}
+1: & \texttt{<program>} & $\rightarrow$ & \texttt{<prolog>} \texttt{<funcs>} \texttt{EOF} \\
+2: & \texttt{<prolog>} & $\rightarrow$ & \texttt{import} \texttt{id} \texttt{.} \texttt{*} \texttt{NEWLINE} \\
+3: & \texttt{<funcs>} & $\rightarrow$ & \texttt{<func\_def>} \texttt{<funcs>} \\
+4: & \texttt{<funcs>} & $\rightarrow$ & $\varepsilon$ \\
+5: & \texttt{<func\_def>} & $\rightarrow$ & \texttt{<main\_opt>} \texttt{def} \texttt{id} \texttt{(} \texttt{<params>} \texttt{)} \texttt{<type\_opt>} \texttt{=} \texttt{<func\_body>} \\
+6: & \texttt{<main\_opt>} & $\rightarrow$ & \texttt{@} \texttt{id} \texttt{<nl\_opt>} \\
+7: & \texttt{<main\_opt>} & $\rightarrow$ & $\varepsilon$ \\
+8: & \texttt{<nl\_opt>} & $\rightarrow$ & \texttt{NEWLINE} \\
+9: & \texttt{<nl\_opt>} & $\rightarrow$ & $\varepsilon$ \\
+10: & \texttt{<func\_body>} & $\rightarrow$ & \texttt{expr} \texttt{NEWLINE} \\
+11: & \texttt{<func\_body>} & $\rightarrow$ & \texttt{<block>} \\
+\end{tabular}}
+
+\subsection*{Parametry a typy}
+{\small
+\begin{tabular}{@{}r@{\hspace{0.6em}}p{9.5em}@{\hspace{0.4em}}c@{\hspace{0.4em}}l@{}}
+12: & \texttt{<params>} & $\rightarrow$ & \texttt{<param>} \texttt{<params\_tail>} \\
+13: & \texttt{<params>} & $\rightarrow$ & $\varepsilon$ \\
+14: & \texttt{<params\_tail>} & $\rightarrow$ & \texttt{,} \texttt{<param>} \texttt{<params\_tail>} \\
+15: & \texttt{<params\_tail>} & $\rightarrow$ & $\varepsilon$ \\
+16: & \texttt{<param>} & $\rightarrow$ & \texttt{id} \texttt{:} \texttt{<type>} \\
+17: & \texttt{<type\_opt>} & $\rightarrow$ & \texttt{:} \texttt{<type>} \\
+18: & \texttt{<type\_opt>} & $\rightarrow$ & $\varepsilon$ \\
+19: & \texttt{<type>} & $\rightarrow$ & \texttt{Int} \\
+20: & \texttt{<type>} & $\rightarrow$ & \texttt{Double} \\
+21: & \texttt{<type>} & $\rightarrow$ & \texttt{String} \\
+22: & \texttt{<type>} & $\rightarrow$ & \texttt{Unit} \\
+\end{tabular}}
+
+\subsection*{Bloky a příkazy}
+{\small
+\begin{tabular}{@{}r@{\hspace{0.6em}}p{9.5em}@{\hspace{0.4em}}c@{\hspace{0.4em}}l@{}}
+23: & \texttt{<block>} & $\rightarrow$ & \texttt{NEWLINE} \texttt{INDENT} \texttt{<statements>} \texttt{DEDENT} \\
+24: & \texttt{<statements>} & $\rightarrow$ & \texttt{<statement>} \texttt{<statements\_tail>} \\
+25: & \texttt{<statements\_tail>} & $\rightarrow$ & \texttt{<statement>} \texttt{<statements\_tail>} \\
+26: & \texttt{<statements\_tail>} & $\rightarrow$ & $\varepsilon$ \\
+27: & \texttt{<statement>} & $\rightarrow$ & \texttt{<simple\_stmt>} \texttt{<stmt\_sep>} \\
+28: & \texttt{<statement>} & $\rightarrow$ & \texttt{<if>} \\
+29: & \texttt{<statement>} & $\rightarrow$ & \texttt{<while>} \\
+30: & \texttt{<stmt\_sep>} & $\rightarrow$ & \texttt{NEWLINE} \\
+31: & \texttt{<stmt\_sep>} & $\rightarrow$ & \texttt{;} \texttt{<nl\_opt>} \\
+32: & \texttt{<simple\_stmt>} & $\rightarrow$ & \texttt{<var\_def>} \\
+33: & \texttt{<simple\_stmt>} & $\rightarrow$ & \texttt{<return>} \\
+34: & \texttt{<simple\_stmt>} & $\rightarrow$ & \texttt{id} \texttt{=} \texttt{expr} \\
+35: & \texttt{<simple\_stmt>} & $\rightarrow$ & \texttt{expr} \\
+36: & \texttt{<var\_def>} & $\rightarrow$ & \texttt{<var\_kind>} \texttt{id} \texttt{<type\_opt>} \texttt{=} \texttt{expr} \\
+37: & \texttt{<var\_kind>} & $\rightarrow$ & \texttt{val} \\
+38: & \texttt{<var\_kind>} & $\rightarrow$ & \texttt{var} \\
+39: & \texttt{<return>} & $\rightarrow$ & \texttt{return} \texttt{<ret\_value>} \\
+40: & \texttt{<ret\_value>} & $\rightarrow$ & \texttt{expr} \\
+41: & \texttt{<ret\_value>} & $\rightarrow$ & $\varepsilon$ \\
+42: & \texttt{<if>} & $\rightarrow$ & \texttt{if} \texttt{expr} \texttt{then} \texttt{<block>} \texttt{else} \texttt{<block>} \\
+43: & \texttt{<while>} & $\rightarrow$ & \texttt{while} \texttt{expr} \texttt{do} \texttt{<block>} \\
+\end{tabular}}
+
+\subsection*{Volání funkcí (součást expr v precedenční analýze)}
+{\small
+\begin{tabular}{@{}r@{\hspace{0.6em}}p{9.5em}@{\hspace{0.4em}}c@{\hspace{0.4em}}l@{}}
+44: & \texttt{<call>} & $\rightarrow$ & \texttt{id} \texttt{(} \texttt{<args>} \texttt{)} \\
+45: & \texttt{<args>} & $\rightarrow$ & \texttt{expr} \texttt{<args\_tail>} \\
+46: & \texttt{<args>} & $\rightarrow$ & $\varepsilon$ \\
+47: & \texttt{<args\_tail>} & $\rightarrow$ & \texttt{,} \texttt{expr} \texttt{<args\_tail>} \\
+48: & \texttt{<args\_tail>} & $\rightarrow$ & $\varepsilon$ \\
+\end{tabular}}
+
+
+\subsection*{Poznámky k pravidlům}
+\begin{itemize}
+  \item pravidlo 2: id musí být \texttt{ifj26}, jinak chyba 2
+  \item pravidlo 6: id musí být \texttt{main}, jinak chyba 2
+  \item pravidlo 10: jednořádková funkce
+  \item pravidlo 11: víceřádková funkce
+  \item pravidlo 34: LL(2): \texttt{id} a za ním \texttt{=}
+\end{itemize}

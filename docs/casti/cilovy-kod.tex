@@ -1,0 +1,22 @@
+\section{Generování cílového kódu}
+
+Prevod vnútornej reprezentácie programu z lineárneho zoznamu trojadresných inštrukcií (\texttt{ilist}) na cieľový kód jazyka \texttt{IFJcode26} zabezpečuje modul \texttt{codegen} (\texttt{codegen.h}, \texttt{codegen.c}). Výsledný kód je priebežne vypisovaný priamo na štandardný výstup (\texttt{stdout}), čím sa minimalizuje pamäťová náročnosť pri generovaní rozsiahlejších programov.
+
+\subsection{Rozhranie a priebeh generovania}
+Hlavným vstupným bodom modulu je funkcia \texttt{codegen\_generate}, ktorá prijíma ukazovateľ na štruktúru \texttt{ListOfInstr}. Priebeh generovania pozostáva z troch krokov:
+\begin{enumerate}
+    \item Vygenerovanie povinnej hlavičky \texttt{.IFJcode26} na začiatok výstupu.
+    \item Sekvenčné spracovanie všetkých inštrukcií uložených v zozname \texttt{ListOfInstr} a ich mapovanie na zodpovedajúce inštrukcie cieľového jazyka.
+    \item Korektné ukončenie programu inštrukciou \texttt{EXIT int@0}.
+\end{enumerate}
+
+Okrem hlavnej funkcie modul poskytuje sadu špecializovaných pomocných funkcií (\texttt{gen\_*}) rozdelených podľa kategórií operácií:
+\begin{itemize}
+    \item \textbf{Práca s rámcami a premennými:} správa pamäťových rámcov (\texttt{GF}, \texttt{LF}, \texttt{TF}) prostredníctvom inštrukcií \texttt{CREATEFRAME}, \texttt{PUSHFRAME}, \texttt{POPFRAME}, definícia premenných (\texttt{DEFVAR}) a priradenie hodnôt (\texttt{MOVE}).
+    \item \textbf{Aritmetické a relačné operácie:} celočíselné aj desatinné operácie (\texttt{ADD}, \texttt{SUB}, \texttt{MUL}, \texttt{IDIV}, \texttt{DIV}) a porovnávanie operandov (\texttt{LT}, \texttt{GT}, \texttt{EQ}).
+    \item \textbf{Reťazcové a typové operácie:} zisťovanie dĺžky a manipulácia so znakmi (\texttt{STRLEN}, \texttt{GETCHAR}, \texttt{SETCHAR}) a dynamická kontrola typu (\texttt{TYPE}).
+    \item \textbf{Vstup, výstup a riadenie toku:} načítanie vstupu a výpis hodnôt (\texttt{READ}, \texttt{WRITE}), definícia návestí (\texttt{LABEL}) a realizácia nepodmienených aj podmienených skokov (\texttt{JUMP}, \texttt{JUMPIFEQ}, \texttt{JUMPIFNEQ}).
+\end{itemize}
+
+\subsection{Formátovanie konštánt}
+Konštanty sú generované v súlade s lexikálnymi pravidlami \texttt{IFJcode26}. Desatinné čísla typu \texttt{Double} sa vypisujú v hexadecimálnom formáte (\texttt{\%a}), hodnota \texttt{Unit} ako \texttt{nil@nil}. Pri reťazcoch (\texttt{String}) sa znaky s ASCII hodnotou $\leq 32$, znak \texttt{\#} a spätné lomítko \texttt{\textbackslash} automaticky konvertujú na trojciferné escape sekvencie \texttt{\textbackslash xyz}.

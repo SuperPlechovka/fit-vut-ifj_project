@@ -1,0 +1,24 @@
+\section{Syntaktická analýza}
+\label{sec:parser}
+\sloppy % dlouhé identifikátory v \texttt se jinak nezalomí
+% Text: František Fiala. Do LaTeXu převedeno bez změny obsahu (AI: jen sazba).
+
+Syntaktickou analýzu řídí parser. Tokeny si z~lexeru bere sám, jeden po druhém, a vstup prochází rekurzivním sestupem podle gramatiky v~příloze~\ref{app:gramatika}. Parser si drží dva tokeny: aktuální (\texttt{current}) a následující (\texttt{lookahead}). Analýza je až na jednu výjimku LL(1). Touto výjimkou jsou pravidla 34 a 35, která obě začínají identifikátorem, a proto se u nich rozhoduje i podle tokenu \texttt{lookahead} (LL(2), viz poznámky u LL gramatiky v~příloze~\ref{app:gramatika}).
+
+Výstupem parseru je abstraktní syntaktický strom (AST), který dál předává sémantické analýze.
+
+Když parser při rekurzivním sestupu narazí na výraz, předá řízení precedenční analýze (\texttt{expression\_parser.c}). Ta pracuje se dvěma zásobníky: zásobníkem symbolů (\texttt{precedence\_stack.c}) a zásobníkem podstromů AST (\texttt{node\_stack.c}). Jejím výstupem je podstrom AST výrazu (precedenční tabulka viz příloha~\ref{app:prec}).
+
+\paragraph{FUNEXP} Narazí-li precedenční analýza na identifikátor následovaný \texttt{(}, zavolá zpět funkci parseru \texttt{parseCall} (pravidla 44--48). Argumenty volání jsou opět výrazy, takže se zpracovávají precedenční analýzou (viz poznámka v~příloze~\ref{app:gramatika}).
+
+\paragraph{Chyby} Zaznamená se jen první chyba, i s~pozicí, a překlad pak skončí. Syntaktická chyba má kód 2, lexikální chybu lexeru parser převede na kód 1. První chyba se ukládá proto, že místo, kde vznikla, má nejpřesnější hlášku i pozici a vyšší úrovně sestupu ji už nepřepíšou.
+
+\paragraph{Moduly}
+\begin{itemize}
+  \item \texttt{parser}: prochází vstup rekurzivním sestupem podle LL gramatiky. Rozhodování podle LL tabulky je zakódované přímo v~podmínkách jednotlivých funkcí.
+  \item \texttt{expression\_parser}: precedenční analýza výrazů.
+  \item \texttt{precedence\_stack}: zásobník symbolů nad dynamicky zvětšovaným polem, který používá precedenční analýza.
+  \item \texttt{node\_stack}: zásobník podstromů AST nad dynamicky zvětšovaným polem. \texttt{expression\_parser} na něm skládá podstrom výrazu, který pak vrací parseru.
+  \item \texttt{error.h}: výčet chybových kódů \texttt{ErrorCode}, jejichž hodnoty jsou rovnou návratové kódy překladače. Hlášku a pozici chyby nese struktura \texttt{ParseError} v~\texttt{parser.h}.
+\end{itemize}
+\fussy

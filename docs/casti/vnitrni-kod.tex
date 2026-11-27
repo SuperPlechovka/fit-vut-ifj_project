@@ -1,0 +1,19 @@
+\section{Vnitřní reprezentace}
+
+Překladač využívá pro reprezentaci zpracovávaného programu dvě vnitřní struktury:
+\begin{itemize}
+    \item \textbf{Abstraktní syntaktický strom (\texttt{ast}):} Stromová reprezentace programu tvořená uzly (\texttt{Node}), kterou vytváří parser na základě syntaktické, precedenční a sémantické analýzy. Zachytává hierarchii funkcí, příkazů, volání (včetně výrazů v argumentech díky rozšíření \texttt{FUNEXP}) a výrazů.
+    \item \textbf{Seznam instrukcí tříadresného kódu (\texttt{ilist}):} Lineární seznam instrukcí vnitřního kódu, do kterého se postupně ukládají vygenerované operace a který slouží jako hlavní datový vstup pro generátor cílového kódu.
+\end{itemize}
+
+\subsection{Generování vnitřního kódu}
+Převod abstraktního syntaktického stromu na seznam instrukcí tříadresného kódu zajišťuje modul \texttt{insidecodegene}. Tento modul je implementován odděleně od samotných datových struktur \texttt{ast} a \texttt{ilist}.
+   Při průchodu uzly \texttt{AST} generátor plní strukturu \texttt{ilist} instrukcemi tříadresného kódu a zároveň řeší:
+\begin{itemize}
+    \item \textbf{Typy výrazů:} určení datových typů při překladu výrazů a mezivýsledků,
+    \item \textbf{Návratové hodnoty:} sjednocení práce s návratovými hodnotami,
+    \item \textbf{Vestavěné funkce:} vygenerování instrukcí pro funkce typu \texttt{subStr} či \texttt{ord} a související stavy.
+\end{itemize}
+    
+
+Výsledkem generování je list instrukcí 3 adresného kódu, který je pak dále předán modulu pro generování cílového kódu. 

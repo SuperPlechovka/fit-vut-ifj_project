@@ -1,0 +1,8 @@
+\section{Lexikální analýza}
+\label{sec:lexer}
+
+\begin{itemize}
+  \item \texttt{lexer.c}/\texttt{lexer.h} čte vstup po znacích, pomocí stavového automatu rozpoznává identifikátory, klíčová slova, literály a operátory. Parser si vyžádá další token voláním \texttt{next\_token}. Lexer při čtení přeskakuje komentáře a podle zásobníku odsazení vydává tokeny \texttt{TOK\_INDENT} a \texttt{TOK\_DEDENT}.
+
+  \item \texttt{token.c}/\texttt{token.h} definuje druh tokenu, jeho hodnotu a počáteční i koncovou pozici ve vstupu. Podle druhu token uchovává například hodnotu čísla nebo text identifikátoru či řetězce.
+\end{itemize}

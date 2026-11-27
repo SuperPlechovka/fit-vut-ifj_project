@@ -1,0 +1,4 @@
+\section{Tabulka symbolů}
+\label{sec:symtable}
+
+Modul \texttt{symtable.c}/\texttt{symtable.h} ukládá symboly do AVL stromu. Po vložení nebo odstranění položky přepočítá výšky uzlů, podle potřeby strom vyváží. Klíč tvoří jméno a počet parametrů. U lokálních symbolů je počet parametrů nulový. Rozhraní umožňuje symboly vkládat, vyhledávat, aktualizovat a odstraňovat. U každého symbolu se ukládá jeho druh a typ. U funkcí se navíc ukládají typy parametrů v jejich pořadí a příznaky.
